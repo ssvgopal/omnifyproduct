@@ -10,14 +10,12 @@ import hashlib
 import uuid
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from services.agentkit_sdk_client_simulation import AgentKitSDKClient
+
 from models.agentkit_models import (
     AgentConfig, AgentExecutionRequest, AgentExecutionResponse,
     WorkflowDefinition, WorkflowExecution, AgentStatus, WorkflowStatus,
-    AgentAuditLog, ComplianceCheck,
-    CreativeIntelligenceInput, CreativeIntelligenceOutput,
-    MarketingAutomationInput, MarketingAutomationOutput,
-    ClientManagementInput, ClientManagementOutput,
-    AnalyticsInput, AnalyticsOutput
+    ComplianceCheck
 )
 
 logger = logging.getLogger(__name__)
@@ -29,34 +27,36 @@ class AgentKitService:
     def __init__(self, db: AsyncIOMotorDatabase, agentkit_api_key: str):
         self.db = db
         self.agentkit_api_key = agentkit_api_key
-        # TODO: Initialize AgentKit SDK when available
-        # self.agentkit_client = AgentKitClient(api_key=agentkit_api_key)
+        # Initialize AgentKit SDK client
+        self.agentkit_client = AgentKitSDKClient(api_key=agentkit_api_key)
     
     # ========== AGENT MANAGEMENT ==========
     
     async def create_agent(self, agent_config: AgentConfig) -> Dict[str, Any]:
         """Create a new AgentKit agent"""
         try:
-            # TODO: Create agent in AgentKit platform
-            # agentkit_response = await self.agentkit_client.create_agent(
-            #     name=agent_config.name,
-            #     type=agent_config.agent_type,
-            #     config=agent_config.config
-            # )
-            # agent_config.agentkit_agent_id = agentkit_response.agent_id
-            
+            # Create agent in AgentKit platform
+            agentkit_response = await self.agentkit_client.create_agent(
+                name=agent_config.name,
+                agent_type=agent_config.agent_type,
+                config=agent_config.config,
+                description=agent_config.description,
+                metadata={"organization_id": agent_config.organization_id}
+            )
+            agent_config.agentkit_agent_id = agentkit_response["agent_id"]
+
             # Store agent configuration in MongoDB
             agent_dict = agent_config.dict()
             await self.db.agentkit_agents.insert_one(agent_dict)
-            
+
             logger.info(f"Created agent {agent_config.agent_id} for organization {agent_config.organization_id}")
-            
+
             return {
                 "agent_id": agent_config.agent_id,
                 "status": "created",
                 "agentkit_agent_id": agent_config.agentkit_agent_id
             }
-        
+
         except Exception as e:
             logger.error(f"Error creating agent: {str(e)}")
             raise
@@ -116,16 +116,14 @@ class AgentKitService:
                 input_data=request.input_data
             )
             
-            # TODO: Execute agent in AgentKit platform
-            # agentkit_response = await self.agentkit_client.execute_agent(
-            #     agent_id=agent.agentkit_agent_id,
-            #     input_data=request.input_data,
-            #     context=request.context
-            # )
-            
-            # Mock execution for now
-            output_data = await self._mock_agent_execution(agent.agent_type, request.input_data)
-            
+            # Execute agent in AgentKit platform
+            agentkit_response = await self.agentkit_client.execute_agent(
+                agent_id=agent.agentkit_agent_id,
+                input_data=request.input_data,
+                context=request.context
+            )
+
+            output_data = agentkit_response["output_data"]
             completed_at = datetime.utcnow()
             duration = (completed_at - started_at).total_seconds()
             
@@ -173,135 +171,39 @@ class AgentKitService:
                 "completed_at": datetime.utcnow()
             }
             await self.db.agentkit_executions.insert_one(execution_record)
-            
             return AgentExecutionResponse(
                 execution_id=execution_id,
                 agent_id=request.agent_id,
                 status=AgentStatus.FAILED,
-                error=str(e),
-                started_at=started_at
+                error=str(e)
             )
-    
-    async def _mock_agent_execution(self, agent_type: str, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Mock agent execution (replace with real AgentKit calls)"""
-        
-        if agent_type == "creative_intelligence":
-            return {
-                "analysis_results": {
-                    "aida_scores": {
-                        "attention": 0.85,
-                        "interest": 0.78,
-                        "desire": 0.82,
-                        "action": 0.75
-                    },
-                    "compliance_score": 0.92,
-                    "performance_prediction": {
-                        "ctr_estimate": 0.035,
-                        "conversion_rate_estimate": 0.028,
-                        "confidence": 0.87
-                    }
-                },
-                "recommendations": [
-                    "Strengthen call-to-action for higher action score",
-                    "Consider A/B testing headline variations",
-                    "Optimize for mobile viewing"
-                ]
-            }
-        
-        elif agent_type == "marketing_automation":
-            return {
-                "campaign_id": input_data.get("campaign_id"),
-                "platform_campaign_ids": {
-                    "google_ads": f"gads_{uuid.uuid4().hex[:8]}",
-                    "meta_ads": f"meta_{uuid.uuid4().hex[:8]}"
-                },
-                "status": "deployed",
-                "deployment_results": {
-                    "google_ads": {"status": "active", "ad_groups": 3, "ads": 12},
-                    "meta_ads": {"status": "active", "ad_sets": 2, "ads": 8}
-                },
-                "next_actions": [
-                    "Monitor performance for first 24 hours",
-                    "Adjust bids based on early metrics",
-                    "Schedule performance review in 3 days"
-                ]
-            }
-        
-        elif agent_type == "client_management":
-            return {
-                "client_id": input_data.get("client_id"),
-                "action_result": "success",
-                "subscription_status": "active",
-                "billing_status": "current",
-                "success_metrics": {
-                    "campaigns_launched": 5,
-                    "total_spend": 12500,
-                    "total_revenue": 45000,
-                    "roi": 3.6
-                },
-                "recommendations": [
-                    "Client ready for upsell to Professional tier",
-                    "Schedule quarterly business review",
-                    "Introduce advanced features"
-                ]
-            }
-        
-        elif agent_type == "analytics":
-            return {
-                "analysis_type": input_data.get("analysis_type", "real_time"),
-                "metrics": {
-                    "total_impressions": 125000,
-                    "total_clicks": 4375,
-                    "ctr": 0.035,
-                    "total_conversions": 123,
-                    "conversion_rate": 0.028,
-                    "total_spend": 3250,
-                    "total_revenue": 11070,
-                    "roas": 3.41
-                },
-                "insights": [
-                    "CTR 15% above industry average",
-                    "Conversion rate trending upward (+8% week-over-week)",
-                    "Meta Ads outperforming Google Ads by 22% ROAS"
-                ],
-                "predictions": {
-                    "next_7_days_revenue": 8500,
-                    "next_7_days_conversions": 95,
-                    "confidence": 0.83
-                },
-                "recommendations": [
-                    "Increase Meta Ads budget by 25%",
-                    "Pause underperforming Google Ads campaigns",
-                    "Test new creative variations"
-                ]
-            }
-        
-        return {"status": "completed", "message": "Agent executed successfully"}
     
     # ========== WORKFLOW MANAGEMENT ==========
     
     async def create_workflow(self, workflow: WorkflowDefinition) -> Dict[str, Any]:
         """Create a new AgentKit workflow"""
         try:
-            # TODO: Create workflow in AgentKit platform
-            # agentkit_response = await self.agentkit_client.create_workflow(
-            #     name=workflow.name,
-            #     steps=workflow.steps
-            # )
-            # workflow.agentkit_workflow_id = agentkit_response.workflow_id
-            
+            # Create workflow in AgentKit platform
+            agentkit_response = await self.agentkit_client.create_workflow(
+                name=workflow.name,
+                description=workflow.description,
+                steps=workflow.steps,
+                config=workflow.config
+            )
+            workflow.agentkit_workflow_id = agentkit_response["workflow_id"]
+
             # Store workflow in MongoDB
             workflow_dict = workflow.dict()
             await self.db.agentkit_workflows.insert_one(workflow_dict)
-            
+
             logger.info(f"Created workflow {workflow.workflow_id} for organization {workflow.organization_id}")
-            
+
             return {
                 "workflow_id": workflow.workflow_id,
                 "status": "created",
                 "agentkit_workflow_id": workflow.agentkit_workflow_id
             }
-        
+
         except Exception as e:
             logger.error(f"Error creating workflow: {str(e)}")
             raise
@@ -315,7 +217,6 @@ class AgentKitService:
     ) -> WorkflowExecution:
         """Execute an AgentKit workflow"""
         execution_id = str(uuid.uuid4())
-        started_at = datetime.utcnow()
         
         try:
             # Get workflow definition
@@ -337,63 +238,25 @@ class AgentKitService:
             
             await self.db.agentkit_workflow_executions.insert_one(execution.dict())
             
-            # TODO: Execute workflow in AgentKit platform
-            # For now, execute steps sequentially
-            workflow_data = input_data.copy()
-            completed_steps = []
-            
-            for step in workflow.steps:
-                # Check dependencies
-                if step.depends_on and not all(dep in completed_steps for dep in step.depends_on):
-                    continue
-                
-                # Map input data
-                step_input = {
-                    key: workflow_data.get(source_key)
-                    for key, source_key in step.input_mapping.items()
-                }
-                
-                # Execute agent
-                agent_request = AgentExecutionRequest(
-                    agent_id=f"{organization_id}_{step.agent_type}",
-                    input_data=step_input,
-                    user_id=user_id,
-                    organization_id=organization_id
-                )
-                
-                agent_response = await self.execute_agent(agent_request)
-                
-                if agent_response.status == AgentStatus.FAILED:
-                    # Workflow failed
-                    execution.status = WorkflowStatus.FAILED
-                    execution.failed_steps.append(step.step_id)
-                    execution.error = agent_response.error
-                    break
-                
-                # Map output data
-                if agent_response.output_data:
-                    for key, target_key in step.output_mapping.items():
-                        if key in agent_response.output_data:
-                            workflow_data[target_key] = agent_response.output_data[key]
-                
-                completed_steps.append(step.step_id)
-                execution.completed_steps.append(step.step_id)
-            
-            # Update execution status
-            if execution.status != WorkflowStatus.FAILED:
-                execution.status = WorkflowStatus.COMPLETED
-                execution.output_data = workflow_data
-            
+            # Execute workflow in AgentKit platform
+            agentkit_response = await self.agentkit_client.execute_workflow(
+                workflow_id=workflow.agentkit_workflow_id,
+                input_data=input_data
+            )
+
+            # Update execution status from SDK response
+            execution.status = WorkflowStatus.COMPLETED
+            execution.output_data = agentkit_response["output_data"]
             execution.completed_at = datetime.utcnow()
-            execution.duration_seconds = (execution.completed_at - started_at).total_seconds()
-            
+            execution.duration_seconds = agentkit_response["duration_seconds"]
+
             # Update execution record
             await self.db.agentkit_workflow_executions.update_one(
                 {"execution_id": execution_id},
                 {"$set": execution.dict()}
             )
-            
-            logger.info(f"Workflow {workflow_id} executed with status {execution.status}")
+
+            logger.info(f"Workflow {workflow_id} executed successfully in {execution.duration_seconds}s")
             return execution
         
         except Exception as e:

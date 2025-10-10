@@ -14,6 +14,7 @@ email-validator==2.3.0
 fastapi==0.110.1
 flake8==7.3.0
 h11==0.16.0
+httpx==0.25.0
 idna==3.10
 iniconfig==2.1.0
 isort==6.0.1
@@ -43,6 +44,8 @@ Pygments==2.19.2
 PyJWT==2.10.1
 pymongo==4.5.0
 pytest==8.4.2
+pytest-asyncio==0.21.1
+pytest-cov==4.0.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.1
 python-jose==3.5.0
@@ -66,3 +69,21 @@ tzdata==2025.2
 urllib3==2.5.0
 uvicorn==0.25.0
 watchfiles==1.1.0
+
+# Production monitoring and logging
+sentry-sdk[fastapi]==1.40.0
+structlog==23.2.0
+
+# Redis for caching (optional)
+redis==5.0.1
+
+# Rate limiting
+slowapi==0.1.9
+
+# API documentation
+mkdocs==1.5.3
+mkdocs-material==9.4.8
+
+# Development tools
+pre-commit==3.6.0
+bandit==1.7.5
