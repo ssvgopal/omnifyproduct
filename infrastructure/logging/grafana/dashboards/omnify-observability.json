@@ -1,0 +1,265 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "OmnifyProduct Observability Dashboard",
+    "tags": ["omnify", "logs", "tracing"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Log Volume by Level",
+        "type": "barchart",
+        "targets": [
+          {
+            "expr": "count by (level) (rate({job=~\"omnify.*\"} | json | __error__=\"\" [5m]))",
+            "legendFormat": "{{level}}",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Error Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate({job=~\"omnify.*\", level=\"ERROR\"} | json | __error__=\"\" [5m])",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 12,
+          "y": 0
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 0.1
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Active Workflows",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "count(count by (workflow_id) (rate({job=~\"omnify.*\", event_type=\"workflow_start\"} | json | __error__=\"\" [5m])))",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 18,
+          "y": 0
+        }
+      },
+      {
+        "id": 4,
+        "title": "API Response Times",
+        "type": "heatmap",
+        "targets": [
+          {
+            "expr": "rate({job=\"omnify_backend\", event_type=\"request_complete\"} | json | unwrap duration_ms [5m])",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 5,
+        "title": "Recent Errors",
+        "type": "logs",
+        "targets": [
+          {
+            "expr": "{job=~\"omnify.*\", level=\"ERROR\"} | json | line_format \"{{.timestamp}} [{{.level}}] {{.message}}\"",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {
+          "h": 12,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        },
+        "options": {
+          "showTime": true,
+          "showLabels": false,
+          "showCommonLabels": false,
+          "wrapLogMessage": true,
+          "prettifyLogMessage": true,
+          "enableLogDetails": true
+        }
+      },
+      {
+        "id": 6,
+        "title": "Workflow Execution Timeline",
+        "type": "logs",
+        "targets": [
+          {
+            "expr": "{job=~\"omnify.*\", event_type=~\"workflow.*\"} | json | line_format \"{{.timestamp}} [{{.event_type}}] WF:{{.context.workflow_id}} {{.message}}\"",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {
+          "h": 12,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        },
+        "options": {
+          "showTime": true,
+          "showLabels": false,
+          "showCommonLabels": false,
+          "wrapLogMessage": true,
+          "prettifyLogMessage": true,
+          "enableLogDetails": true
+        }
+      },
+      {
+        "id": 7,
+        "title": "Top Error Messages",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "topk(10, count by (message) ({job=~\"omnify.*\", level=\"ERROR\"} | json | __error__=\"\"))",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 20
+        }
+      },
+      {
+        "id": 8,
+        "title": "API Requests by Endpoint",
+        "type": "barchart",
+        "targets": [
+          {
+            "expr": "count by (path) (rate({job=\"omnify_backend\", event_type=\"request_start\"} | json | __error__=\"\" [5m]))",
+            "legendFormat": "{{path}}",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 24
+        }
+      },
+      {
+        "id": 9,
+        "title": "User Activity",
+        "type": "barchart",
+        "targets": [
+          {
+            "expr": "count by (userId) (rate({job=\"omnify_frontend\", eventType=\"user_action\"} | json | __error__=\"\" [5m]))",
+            "legendFormat": "User {{userId}}",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 28
+        }
+      },
+      {
+        "id": 10,
+        "title": "System Health",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"omnify_backend\"}",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 32
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "DOWN",
+                    "color": "red"
+                  },
+                  "1": {
+                    "text": "UP",
+                    "color": "green"
+                  }
+                },
+                "type": "value"
+              }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "templating": {
+      "list": []
+    },
+    "annotations": {
+      "list": []
+    },
+    "refresh": "5s",
+    "schemaVersion": 27,
+    "version": 0,
+    "links": []
+  }
+}

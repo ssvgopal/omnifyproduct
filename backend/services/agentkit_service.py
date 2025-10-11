@@ -1,24 +1,23 @@
 """
 AgentKit Service Layer for Omnify Cloud Connect
-Handles AgentKit agent creation, execution, and workflow orchestration
+Handles AgentKit agent creation, execution, and workflow orchestration with comprehensive tracing
 """
 
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union
 from datetime import datetime, timedelta
-import logging
+import time
 import hashlib
 import uuid
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from services.agentkit_sdk_client_simulation import AgentKitSDKClient
+from services.structured_logging import logger
 
 from models.agentkit_models import (
     AgentConfig, AgentExecutionRequest, AgentExecutionResponse,
     WorkflowDefinition, WorkflowExecution, AgentStatus, WorkflowStatus,
     ComplianceCheck
 )
-
-logger = logging.getLogger(__name__)
 
 
 class AgentKitService:
@@ -215,17 +214,24 @@ class AgentKitService:
         user_id: str,
         organization_id: str
     ) -> WorkflowExecution:
-        """Execute an AgentKit workflow"""
+        """Execute an AgentKit workflow with comprehensive tracing"""
         execution_id = str(uuid.uuid4())
-        
+        workflow_start_time = time.time()
+
         try:
+            # Log workflow start
+            logger.workflow_start(workflow_id, user_id, organization_id=organization_id)
+
             # Get workflow definition
             workflow_data = await self.db.agentkit_workflows.find_one({"workflow_id": workflow_id})
             if not workflow_data:
+                logger.error(f"Workflow {workflow_id} not found", event_type='workflow_error')
                 raise ValueError(f"Workflow {workflow_id} not found")
-            
+
+            logger.workflow_step("workflow_load", "completed", workflow_name=workflow_data.get('name'))
+
             workflow = WorkflowDefinition(**workflow_data)
-            
+
             # Create workflow execution record
             execution = WorkflowExecution(
                 execution_id=execution_id,
@@ -235,14 +241,25 @@ class AgentKitService:
                 status=WorkflowStatus.IN_PROGRESS,
                 input_data=input_data
             )
-            
+
             await self.db.agentkit_workflow_executions.insert_one(execution.dict())
-            
+
+            # Log workflow execution start in AgentKit
+            logger.workflow_step("agentkit_execution", "started",
+                               agentkit_workflow_id=workflow.agentkit_workflow_id)
+
             # Execute workflow in AgentKit platform
+            agentkit_start = time.time()
             agentkit_response = await self.agentkit_client.execute_workflow(
                 workflow_id=workflow.agentkit_workflow_id,
                 input_data=input_data
             )
+            agentkit_duration = time.time() - agentkit_start
+
+            # Log AgentKit execution completion
+            logger.workflow_step("agentkit_execution", "completed",
+                               duration_ms=round(agentkit_duration * 1000, 2),
+                               output_size=len(str(agentkit_response.get('output_data', ''))))
 
             # Update execution status from SDK response
             execution.status = WorkflowStatus.COMPLETED
@@ -256,22 +273,42 @@ class AgentKitService:
                 {"$set": execution.dict()}
             )
 
-            logger.info(f"Workflow {workflow_id} executed successfully in {execution.duration_seconds}s")
+            # Log workflow completion
+            total_duration_ms = (time.time() - workflow_start_time) * 1000
+            logger.workflow_complete(
+                workflow_id,
+                1,  # Simplified step count
+                duration_ms=total_duration_ms,
+                organization_id=organization_id,
+                user_id=user_id
+            )
+
             return execution
-        
+
         except Exception as e:
-            logger.error(f"Error executing workflow {workflow_id}: {str(e)}")
-            
+            total_duration_ms = (time.time() - workflow_start_time) * 1000
+
+            logger.workflow_error(
+                workflow_id,
+                str(e),
+                execution_id=execution_id,
+                duration_ms=round(total_duration_ms, 2),
+                organization_id=organization_id,
+                user_id=user_id,
+                exc_info=e
+            )
+
             # Update execution as failed
             await self.db.agentkit_workflow_executions.update_one(
                 {"execution_id": execution_id},
                 {"$set": {
                     "status": WorkflowStatus.FAILED,
                     "error": str(e),
-                    "completed_at": datetime.utcnow()
+                    "completed_at": datetime.utcnow(),
+                    "duration_seconds": total_duration_ms / 1000
                 }}
             )
-            
+
             raise
     
     # ========== AUDIT & COMPLIANCE ==========
