@@ -6,6 +6,7 @@ This replaces the mock implementation with actual OpenAI Agents SDK calls
 import asyncio
 import json
 import logging
+import os
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 import uuid
@@ -18,6 +19,14 @@ try:
 except ImportError:
     AGENTS_SDK_AVAILABLE = False
     logging.warning("OpenAI Agents SDK not available. Install with: pip install openai-agents")
+
+# Fallback to OpenAI API if Agents SDK not available
+try:
+    import openai
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+    logging.warning("OpenAI Python SDK not available. Install with: pip install openai")
 
 from models.agentkit_models import (
     AgentConfig, AgentExecutionRequest, AgentExecutionResponse,
@@ -42,23 +51,26 @@ class AgentKitSDKClient:
             api_key: OpenAI API key (Agents SDK uses OpenAI API)
             base_url: Optional base URL override
         """
-        if not AGENTS_SDK_AVAILABLE:
-            raise ImportError("OpenAI Agents SDK not installed. Install with: pip install openai-agents")
+        if not AGENTS_SDK_AVAILABLE and not OPENAI_AVAILABLE:
+            raise ImportError("Neither OpenAI Agents SDK nor OpenAI Python SDK installed. Install with: pip install openai-agents or pip install openai")
 
         self.api_key = api_key
         self.base_url = base_url
 
         # Set OpenAI API key for the SDK
-        import os
         os.environ["OPENAI_API_KEY"] = api_key
+        
+        # Initialize OpenAI client if Agents SDK not available
+        if not AGENTS_SDK_AVAILABLE and OPENAI_AVAILABLE:
+            self.openai_client = openai.AsyncOpenAI(api_key=api_key)
 
         # Store created agents for reuse
-        self._agents: Dict[str, Agent] = {}
+        self._agents: Dict[str, Any] = {}
         self._workflows: Dict[str, WorkflowDefinition] = {}
 
-        logger.info("AgentKit SDK client initialized with OpenAI Agents SDK")
+        logger.info(f"AgentKit SDK client initialized with {'OpenAI Agents SDK' if AGENTS_SDK_AVAILABLE else 'OpenAI Python SDK'}")
 
-    async def _create_agent_from_config(self, config: AgentConfig) -> Agent:
+    async def _create_agent_from_config(self, config: AgentConfig) -> Any:
         """Create an OpenAI Agents SDK Agent from our AgentConfig"""
         instructions = self._get_instructions_for_agent_type(config.type)
 
@@ -70,16 +82,26 @@ class AgentKitSDKClient:
         if "optimization" in config.capabilities:
             instructions += "\n\nPerformance Optimization: Suggest platform-specific optimizations for maximum engagement and conversion."
 
-        # Create tools based on agent type
-        tools = self._get_tools_for_agent_type(config.type)
+        if AGENTS_SDK_AVAILABLE:
+            # Create tools based on agent type
+            tools = self._get_tools_for_agent_type(config.type)
 
-        agent = Agent(
-            name=config.name,
-            instructions=instructions,
-            tools=tools,
-            model=config.configuration.get("model", "gpt-4o-mini"),
-            temperature=config.configuration.get("temperature", 0.7)
-        )
+            agent = Agent(
+                name=config.name,
+                instructions=instructions,
+                tools=tools,
+                model=config.configuration.get("model", "gpt-4o-mini"),
+                temperature=config.configuration.get("temperature", 0.7)
+            )
+        else:
+            # Fallback to OpenAI API
+            agent = {
+                "name": config.name,
+                "instructions": instructions,
+                "model": config.configuration.get("model", "gpt-4o-mini"),
+                "temperature": config.configuration.get("temperature", 0.7),
+                "capabilities": config.capabilities
+            }
 
         return agent
 
@@ -351,11 +373,26 @@ class AgentKitSDKClient:
             agent = self._agents[agent_id]
 
             # Execute agent with tracing
-            with trace(f"Agent Execution: {agent_id}"):
-                start_time = datetime.utcnow()
-                result = await Runner.run(agent, input=request.input_data)
-                end_time = datetime.utcnow()
+            start_time = datetime.utcnow()
+            
+            if AGENTS_SDK_AVAILABLE:
+                with trace(f"Agent Execution: {agent_id}"):
+                    result = await Runner.run(agent, input=request.input_data)
+                output = result.final_output
+            else:
+                # Fallback to OpenAI API
+                response = await self.openai_client.chat.completions.create(
+                    model=agent["model"],
+                    messages=[
+                        {"role": "system", "content": agent["instructions"]},
+                        {"role": "user", "content": json.dumps(request.input_data)}
+                    ],
+                    temperature=agent["temperature"],
+                    max_tokens=2000
+                )
+                output = response.choices[0].message.content
 
+            end_time = datetime.utcnow()
             execution_time = (end_time - start_time).total_seconds()
 
             logger.info(f"Agent executed: {agent_id}, execution_time: {execution_time}s")
@@ -366,10 +403,10 @@ class AgentKitSDKClient:
                 "status": "completed",
                 "input_data": request.input_data,
                 "output_data": {
-                    "result": result.final_output,
-                    "analysis": self._parse_agent_output(result.final_output),
-                    "recommendations": self._extract_recommendations(result.final_output),
-                    "score": self._calculate_success_score(result.final_output)
+                    "result": output,
+                    "analysis": self._parse_agent_output(output),
+                    "recommendations": self._extract_recommendations(output),
+                    "score": self._calculate_success_score(output)
                 },
                 "execution_time_seconds": execution_time,
                 "completed_at": end_time.isoformat()
@@ -508,15 +545,25 @@ class AgentKitSDKClient:
     async def health_check(self) -> Dict[str, Any]:
         """Check AgentKit service health"""
         try:
-            # Try a simple agent execution to test connectivity
-            test_agent = Agent(name="Health Check", instructions="Respond with 'OK'")
-            result = await Runner.run(test_agent, input="Health check")
+            if AGENTS_SDK_AVAILABLE:
+                # Try a simple agent execution to test connectivity
+                test_agent = Agent(name="Health Check", instructions="Respond with 'OK'")
+                result = await Runner.run(test_agent, input="Health check")
+                is_healthy = bool(result.final_output)
+            else:
+                # Fallback to OpenAI API health check
+                response = await self.openai_client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[{"role": "user", "content": "Health check"}],
+                    max_tokens=10
+                )
+                is_healthy = bool(response.choices[0].message.content)
 
             return {
-                "status": "healthy" if result.final_output else "degraded",
+                "status": "healthy" if is_healthy else "degraded",
                 "timestamp": datetime.utcnow().isoformat(),
-                "service": "openai-agents-sdk",
-                "sdk_version": "available" if AGENTS_SDK_AVAILABLE else "unavailable"
+                "service": "openai-agents-sdk" if AGENTS_SDK_AVAILABLE else "openai-api",
+                "sdk_version": "available" if AGENTS_SDK_AVAILABLE else "fallback"
             }
 
         except Exception as e:
@@ -525,5 +572,5 @@ class AgentKitSDKClient:
                 "status": "unhealthy",
                 "error": str(e),
                 "timestamp": datetime.utcnow().isoformat(),
-                "service": "openai-agents-sdk"
+                "service": "openai-agents-sdk" if AGENTS_SDK_AVAILABLE else "openai-api"
             }

@@ -26,6 +26,9 @@ from services.production_rate_limiter import production_rate_limiter
 from integrations.google_ads.client import google_ads_integration
 from integrations.meta_ads.client import meta_ads_integration
 from integrations.gohighlevel.client import gohighlevel_integration
+from integrations.linkedin.client import linkedin_ads_integration
+from integrations.shopify.client import shopify_integration
+from integrations.stripe.client import stripe_integration
 
 class Platform(Enum):
     """Supported advertising and marketing platforms"""
@@ -34,6 +37,7 @@ class Platform(Enum):
     LINKEDIN_ADS = "linkedin_ads"
     GOHIGHLEVEL = "gohighlevel"
     SHOPIFY = "shopify"
+    STRIPE = "stripe"
     GOOGLE_ANALYTICS = "google_analytics"
 
 class PlatformIntegrationsManager:
@@ -45,7 +49,10 @@ class PlatformIntegrationsManager:
         self.platforms = {
             Platform.GOOGLE_ADS: google_ads_integration,
             Platform.META_ADS: meta_ads_integration,
-            Platform.GOHIGHLEVEL: gohighlevel_integration
+            Platform.LINKEDIN_ADS: linkedin_ads_integration,
+            Platform.GOHIGHLEVEL: gohighlevel_integration,
+            Platform.SHOPIFY: shopify_integration,
+            Platform.STRIPE: stripe_integration
         }
 
         # Platform capabilities mapping
@@ -58,9 +65,21 @@ class PlatformIntegrationsManager:
                 "campaign_management", "audience_targeting", "creative_optimization",
                 "performance_analytics", "conversion_tracking", "ad_creation"
             ],
+            Platform.LINKEDIN_ADS: [
+                "campaign_management", "b2b_targeting", "professional_audiences",
+                "performance_analytics", "lead_generation", "sponsored_content"
+            ],
             Platform.GOHIGHLEVEL: [
                 "contact_management", "workflow_automation", "email_campaigns",
                 "opportunity_tracking", "appointment_scheduling", "crm_integration"
+            ],
+            Platform.SHOPIFY: [
+                "product_management", "order_processing", "inventory_tracking",
+                "customer_management", "analytics_reporting", "ecommerce_automation"
+            ],
+            Platform.STRIPE: [
+                "payment_processing", "subscription_management", "invoice_generation",
+                "customer_billing", "refund_processing", "webhook_handling"
             ]
         }
 
@@ -68,7 +87,10 @@ class PlatformIntegrationsManager:
         self.cost_tracking = {
             Platform.GOOGLE_ADS: {"cost_per_request": 0.001, "monthly_free": 10000},
             Platform.META_ADS: {"cost_per_request": 0.001, "monthly_free": 200000},
-            Platform.GOHIGHLEVEL: {"cost_per_request": 0.0005, "monthly_free": 100000}
+            Platform.LINKEDIN_ADS: {"cost_per_request": 0.002, "monthly_free": 50000},
+            Platform.GOHIGHLEVEL: {"cost_per_request": 0.0005, "monthly_free": 100000},
+            Platform.SHOPIFY: {"cost_per_request": 0.0001, "monthly_free": 1000000},
+            Platform.STRIPE: {"cost_per_request": 0.0001, "monthly_free": 1000000}
         }
 
         logger.info("Platform integrations manager initialized", extra={
@@ -159,8 +181,14 @@ class PlatformIntegrationsManager:
             return await self._handle_google_ads_action(integration, action, organization_id, params)
         elif platform == Platform.META_ADS:
             return await self._handle_meta_ads_action(integration, action, organization_id, params)
+        elif platform == Platform.LINKEDIN_ADS:
+            return await self._handle_linkedin_ads_action(integration, action, organization_id, params)
         elif platform == Platform.GOHIGHLEVEL:
             return await self._handle_gohighlevel_action(integration, action, organization_id, params)
+        elif platform == Platform.SHOPIFY:
+            return await self._handle_shopify_action(integration, action, organization_id, params)
+        elif platform == Platform.STRIPE:
+            return await self._handle_stripe_action(integration, action, organization_id, params)
         else:
             raise ValueError(f"No handler for platform {platform}")
 
@@ -389,6 +417,182 @@ class PlatformIntegrationsManager:
 
         else:
             raise ValueError(f"Unknown GoHighLevel action: {action}")
+
+    # ========== LINKEDIN ADS HANDLERS ==========
+
+    async def _handle_linkedin_ads_action(
+        self,
+        integration,
+        action: str,
+        organization_id: str,
+        params: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Handle LinkedIn Ads specific actions"""
+        if action == "create_campaign":
+            campaign_id = await integration.create_campaign(
+                organization_id,
+                params["account_id"],
+                params["campaign_data"]
+            )
+            return {
+                "status": "success" if campaign_id else "error",
+                "campaign_id": campaign_id,
+                "platform": "linkedin_ads"
+            }
+
+        elif action == "get_performance":
+            performance = await integration.get_campaign_performance(
+                organization_id,
+                params["account_id"],
+                params["campaign_ids"],
+                params["date_range"]
+            )
+            return {
+                "status": "success",
+                "performance_data": performance,
+                "platform": "linkedin_ads"
+            }
+
+        elif action == "create_creative":
+            creative_id = await integration.create_ad_creative(
+                organization_id,
+                params["account_id"],
+                params["creative_data"]
+            )
+            return {
+                "status": "success" if creative_id else "error",
+                "creative_id": creative_id,
+                "platform": "linkedin_ads"
+            }
+
+        else:
+            raise ValueError(f"Unknown LinkedIn Ads action: {action}")
+
+    # ========== SHOPIFY HANDLERS ==========
+
+    async def _handle_shopify_action(
+        self,
+        integration,
+        action: str,
+        organization_id: str,
+        params: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Handle Shopify specific actions"""
+        if action == "get_products":
+            products_data = await integration.get_products(
+                organization_id,
+                params["shop_domain"],
+                params.get("limit", 50),
+                params.get("page_info")
+            )
+            return {
+                "status": "success",
+                "products": products_data["products"],
+                "has_next_page": products_data["has_next_page"],
+                "platform": "shopify"
+            }
+
+        elif action == "create_product":
+            product_id = await integration.create_product(
+                organization_id,
+                params["shop_domain"],
+                params["product_data"]
+            )
+            return {
+                "status": "success" if product_id else "error",
+                "product_id": product_id,
+                "platform": "shopify"
+            }
+
+        elif action == "get_orders":
+            orders = await integration.get_orders(
+                organization_id,
+                params["shop_domain"],
+                params.get("status"),
+                params.get("limit", 50),
+                params.get("created_at_min")
+            )
+            return {
+                "status": "success",
+                "orders": orders,
+                "platform": "shopify"
+            }
+
+        elif action == "get_analytics":
+            analytics = await integration.get_analytics(
+                organization_id,
+                params["shop_domain"],
+                params["date_range"]
+            )
+            return {
+                "status": "success",
+                "analytics": analytics,
+                "platform": "shopify"
+            }
+
+        else:
+            raise ValueError(f"Unknown Shopify action: {action}")
+
+    # ========== STRIPE HANDLERS ==========
+
+    async def _handle_stripe_action(
+        self,
+        integration,
+        action: str,
+        organization_id: str,
+        params: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Handle Stripe specific actions"""
+        if action == "create_payment_intent":
+            payment_intent = await integration.create_payment_intent(
+                organization_id,
+                params["account_id"],
+                params["payment_data"]
+            )
+            return {
+                "status": "success" if payment_intent else "error",
+                "payment_intent": payment_intent,
+                "platform": "stripe"
+            }
+
+        elif action == "create_customer":
+            customer_id = await integration.create_customer(
+                organization_id,
+                params["account_id"],
+                params["customer_data"]
+            )
+            return {
+                "status": "success" if customer_id else "error",
+                "customer_id": customer_id,
+                "platform": "stripe"
+            }
+
+        elif action == "create_subscription":
+            subscription = await integration.create_subscription(
+                organization_id,
+                params["account_id"],
+                params["subscription_data"]
+            )
+            return {
+                "status": "success" if subscription else "error",
+                "subscription": subscription,
+                "platform": "stripe"
+            }
+
+        elif action == "create_invoice":
+            invoice = await integration.create_invoice(
+                organization_id,
+                params["account_id"],
+                params["invoice_data"]
+            )
+            return {
+                "status": "success" if invoice else "error",
+                "invoice": invoice,
+                "platform": "stripe"
+            }
+
+        else:
+            raise ValueError(f"Unknown Stripe action: {action}")
 
     # ========== PLATFORM MANAGEMENT ==========
 

@@ -70,6 +70,10 @@ urllib3==2.5.0
 uvicorn==0.25.0
 watchfiles==1.1.0
 
+# Machine Learning for Predictive Intelligence
+scikit-learn==1.3.2
+scipy==1.11.4
+
 # Production monitoring and logging
 sentry-sdk[fastapi]==1.40.0
 structlog==23.2.0

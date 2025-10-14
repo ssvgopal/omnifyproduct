@@ -16,12 +16,17 @@ from dotenv import load_dotenv
 from api.agentkit_routes import router as agentkit_router
 from api.auth_routes import router as auth_router
 
-# Import revolutionary AgentKit
-from agentkit_revolutionary import RevolutionaryAgentKit
+# Import database schema manager
+from database.mongodb_schema import MongoDBSchema
+from agentkit_revolutionary.revolutionary_agentkit import RevolutionaryAgentKit
 
-# Import new services
+# Import new services with circuit breaker protection and real AgentKit integration
 from services.redis_cache_service import redis_cache_service
 from services.celery_tasks import init_celery_services
+from services.real_agentkit_adapter import RealAgentKitAdapter, agentkit_adapter
+from services.omnify_core_agents import core_agents
+from services.predictive_intelligence import initialize_predictive_intelligence
+from services.production_circuit_breaker import get_circuit_breaker
 
 # Configure logging
 logging.basicConfig(
@@ -36,70 +41,99 @@ load_dotenv(ROOT_DIR / '.env')
 
 # Global variables
 db = None
-agentkit_service = None
-auth_service = None
+real_agentkit_adapter = None
+core_agents_instance = None
+predictive_engine = None
+circuit_breaker_service = None
 revolutionary_agentkit = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and shutdown"""
-    global db, agentkit_service, revolutionary_agentkit
-    
+    global db, real_agentkit_adapter, core_agents_instance, predictive_engine, revolutionary_agentkit
+
     # Startup
-    logger.info("🚀 Starting Omnify Cloud Connect (Revolutionary AgentKit)...")
-    
+    logger.info("🚀 Starting Omnify Cloud Connect (AgentKit Hybrid)...")
+
     # Connect to MongoDB
     mongo_url = os.environ.get('MONGO_URL')
     db_name = os.environ.get('DB_NAME', 'omnify_cloud')
-    
+
     if not mongo_url:
         raise ValueError("MONGO_URL environment variable not set")
-    
+
     client = AsyncIOMotorClient(mongo_url)
     db = client[db_name]
-    
-    # Initialize Revolutionary AgentKit (4-week implementation)
-    revolutionary_agentkit = RevolutionaryAgentKit(db)
-    revolutionary_status = await revolutionary_agentkit.initialize_revolutionary_system()
-    
-    if revolutionary_status["status"] == "revolutionary_success":
-        logger.info("🎉 Revolutionary AgentKit implementation successful!", extra={
-            "agents_initialized": revolutionary_status["agents_initialized"],
-            "cost_savings": revolutionary_status["cost_savings"],
-            "time_to_market": revolutionary_status["time_to_market"]
+
+    # Initialize Real AgentKit Adapter
+    real_agentkit_adapter = RealAgentKitAdapter(db)
+    agentkit_health = await real_agentkit_adapter.health_check()
+
+    if agentkit_health["status"] == "healthy":
+        logger.info("✅ Real AgentKit adapter initialized successfully", extra={
+            "api_version": agentkit_health.get("api_version"),
+            "response_time": agentkit_health.get("response_time_seconds")
         })
     else:
-        logger.warning("⚠️ Revolutionary AgentKit partial initialization", extra=revolutionary_status)
-    
+        logger.warning("⚠️ AgentKit API health check failed", extra=agentkit_health)
+
+    # Initialize Core Agents
+    core_init_result = await core_agents.initialize_core_agents()
+
+    if core_init_result["successful_initializations"] > 0:
+        logger.info("✅ Core agents initialized", extra={
+            "successful": core_init_result["successful_initializations"],
+            "failed": core_init_result["failed_initializations"],
+            "total": core_init_result["total_agents"]
+        })
+    else:
+        logger.error("❌ Core agents initialization failed", extra=core_init_result)
+
+    # Initialize Predictive Intelligence Engine
+    predictive_engine = await initialize_predictive_intelligence(db)
+    predictive_health = await predictive_engine.health_check()
+
+    logger.info("✅ Predictive Intelligence Engine initialized", extra={
+        "compound_intelligence_score": predictive_engine.compound_intelligence_score,
+        "models_loaded": predictive_health.get("models_loaded", {}),
+        "status": predictive_health["status"]
+    })
+
+    # Initialize Revolutionary AgentKit (legacy compatibility)
+    revolutionary_agentkit = RevolutionaryAgentKit(db)
+    revolutionary_status = await revolutionary_agentkit.initialize_revolutionary_system()
+
+    if revolutionary_status["status"] == "revolutionary_success":
+        logger.info("🎉 Revolutionary AgentKit compatibility layer initialized")
+    else:
+        logger.warning("⚠️ Revolutionary AgentKit compatibility layer partial", extra=revolutionary_status)
+
     # Initialize Redis cache service
-    redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
-    redis_password = os.environ.get('REDIS_PASSWORD')
-    
     await redis_cache_service.connect()
     logger.info("Redis cache service initialized")
-    
+
     # Initialize Celery services
     init_celery_services(db, revolutionary_agentkit)
     logger.info("Celery services initialized")
-    
-    # Legacy services for backward compatibility (removed to focus on revolutionary implementation)
-    
-    logger.info("✅ Omnify Cloud Connect started successfully with Revolutionary AgentKit")
-    
+
+    logger.info("✅ Omnify Cloud Connect started successfully with AgentKit Hybrid")
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down Omnify Cloud Connect...")
+    if real_agentkit_adapter:
+        await real_agentkit_adapter.close()
     client.close()
     logger.info("✅ Shutdown complete")
 
 
 # Create FastAPI app
 app = FastAPI(
-    title="Omnify Cloud Connect (AgentKit-First)",
+    title="Omnify Cloud Connect (AgentKit Hybrid)",
     version="2.0.0",
-    description="Enterprise campaign intelligence platform powered by OpenAI AgentKit",
+    description="Enterprise campaign intelligence platform with AgentKit + Predictive Intelligence + Circuit Breaker Protection",
     lifespan=lifespan
 )
 
@@ -113,12 +147,26 @@ app.add_middleware(
 )
 
 
-# Dependency injection for AgentKit service
-def get_agentkit_service() -> AgentKitService:
-    """Dependency to get AgentKit service"""
-    if agentkit_service is None:
-        raise RuntimeError("AgentKit service not initialized")
-    return agentkit_service
+# Dependency injection for services
+def get_real_agentkit_adapter():
+    """Dependency to get Real AgentKit adapter"""
+    if real_agentkit_adapter is None:
+        raise RuntimeError("Real AgentKit adapter not initialized")
+    return real_agentkit_adapter
+
+def get_core_agents():
+    """Dependency to get core agents service"""
+    return core_agents
+
+def get_predictive_engine():
+    """Dependency to get predictive intelligence engine"""
+    if predictive_engine is None:
+        raise RuntimeError("Predictive intelligence engine not initialized")
+    return predictive_engine
+
+def get_circuit_breaker_service(name: str = "default"):
+    """Dependency to get circuit breaker service"""
+    return get_circuit_breaker(name)
 
 
 def get_db():
@@ -152,13 +200,15 @@ async def root():
             "time_savings": "8x faster"
         },
         "features": [
-            "🎯 Campaign Intelligence Agent (AIDA analysis, creative optimization)",
+            "🎯 Creative Intelligence Agent (AIDA analysis, fatigue prediction)",
             "🤖 Marketing Automation Agent (Multi-platform campaign management)",
             "👥 Client Management Agent (Predictive client success analysis)",
             "📊 Analytics Agent (Attribution modeling, business intelligence)",
             "⚙️ Workflow Orchestration Agent (Multi-agent coordination)",
             "🔒 Compliance Agent (SOC 2 & ISO 27001 built-in)",
             "⚡ Performance Agent (System optimization & monitoring)",
+            "🔮 Predictive Intelligence (Fatigue prediction, LTV forecasting)",
+            "🛡️ Circuit Breaker Protection (External API resilience)",
             "🎪 Revolutionary Workflows (Campaign launch, Client onboarding)"
         ],
         "compliance": "SOC 2 & ISO 27001 compliant from day one",
@@ -172,7 +222,12 @@ async def root():
             "campaign_workflow": "/revolutionary/campaign-workflow",
             "client_onboarding": "/revolutionary/client-onboarding",
             "compliance_audit": "/revolutionary/compliance-audit",
-            "migration_helper": "/revolutionary/migrate-traditional"
+            "migration_helper": "/revolutionary/migrate-traditional",
+            "predictive_fatigue": "/api/predictive/fatigue",
+            "predictive_ltv": "/api/predictive/ltv",
+            "predictive_anomalies": "/api/predictive/anomalies",
+            "predictive_dashboard": "/api/predictive/dashboard",
+            "core_agents_status": "/api/core-agents/status"
         },
         "documentation": "/docs",
         "revolutionary_achievement": "From 8-month custom development to 4-week AgentKit deployment"
@@ -265,6 +320,199 @@ async def setup_organization(
     
     except Exception as e:
         logger.error(f"Error setting up organization: {str(e)}")
+        return {"error": str(e)}, 500
+
+
+# ========== PREDICTIVE INTELLIGENCE ENDPOINTS ==========
+
+@app.post("/api/predictive/fatigue")
+async def predict_creative_fatigue(
+    creative_data: dict,
+    engine=Depends(get_predictive_engine)
+):
+    """Predict creative fatigue using ML models"""
+    try:
+        result = await engine.predict_creative_fatigue(creative_data)
+        return result
+    except Exception as e:
+        logger.error(f"Creative fatigue prediction failed: {str(e)}")
+        return {"error": str(e)}, 500
+
+@app.post("/api/predictive/ltv")
+async def forecast_customer_ltv(
+    customer_data: dict,
+    engine=Depends(get_predictive_engine)
+):
+    """Forecast customer lifetime value"""
+    try:
+        result = await engine.forecast_customer_ltv(customer_data)
+        return result
+    except Exception as e:
+        logger.error(f"LTV forecast failed: {str(e)}")
+        return {"error": str(e)}, 500
+
+@app.post("/api/predictive/anomalies")
+async def detect_anomalies(
+    performance_data: dict,
+    engine=Depends(get_predictive_engine)
+):
+    """Detect performance anomalies"""
+    try:
+        result = await engine.detect_anomalies(performance_data)
+        return result
+    except Exception as e:
+        logger.error(f"Anomaly detection failed: {str(e)}")
+        return {"error": str(e)}, 500
+
+@app.get("/api/predictive/dashboard")
+async def get_predictive_dashboard(
+    engine=Depends(get_predictive_engine)
+):
+    """Get predictive intelligence dashboard"""
+    try:
+        result = await engine.get_predictive_insights_dashboard()
+        return result
+    except Exception as e:
+        logger.error(f"Dashboard generation failed: {str(e)}")
+        return {"error": str(e)}, 500
+
+@app.post("/api/predictive/feedback")
+async def submit_prediction_feedback(
+    feedback_data: dict,
+    engine=Depends(get_predictive_engine)
+):
+    """Submit feedback for model learning"""
+    try:
+        result = await engine.update_models_with_feedback(
+            feedback_data["prediction_type"],
+            feedback_data["actual_outcome"],
+            feedback_data["prediction_data"]
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Feedback submission failed: {str(e)}")
+        return {"error": str(e)}, 500
+
+# ========== CORE AGENTS ENDPOINTS ==========
+
+@app.get("/api/core-agents/status")
+async def get_core_agents_status(
+    agents=Depends(get_core_agents)
+):
+    """Get status of all core agents"""
+    try:
+        result = await agents.get_agents_status()
+        return result
+    except Exception as e:
+        logger.error(f"Core agents status check failed: {str(e)}")
+        return {"error": str(e)}, 500
+
+@app.post("/api/core-agents/execute/{agent_key}")
+async def execute_core_agent(
+    agent_key: str,
+    input_data: dict,
+    agents=Depends(get_core_agents)
+):
+    """Execute a specific core agent"""
+    try:
+        if agent_key == "creative_intelligence":
+            result = await agents.execute_creative_analysis(input_data)
+        elif agent_key == "marketing_automation":
+            result = await agents.execute_campaign_optimization(input_data)
+        elif agent_key == "client_management":
+            result = await agents.execute_client_success_analysis(input_data)
+        elif agent_key == "analytics_intelligence":
+            result = await agents.execute_performance_analytics(input_data)
+        else:
+            return {"error": f"Unknown agent: {agent_key}"}, 400
+
+        return result
+    except Exception as e:
+        logger.error(f"Core agent execution failed: {str(e)}")
+        return {"error": str(e)}, 500
+
+@app.post("/api/core-agents/workflow")
+async def create_agent_workflow(
+    workflow_config: dict,
+    agents=Depends(get_core_agents)
+):
+    """Create and execute a multi-agent workflow"""
+    try:
+        result = await agents.create_campaign_workflow(workflow_config)
+        return result
+    except Exception as e:
+        logger.error(f"Workflow creation failed: {str(e)}")
+        return {"error": str(e)}, 500
+
+@app.post("/api/core-agents/workflow/{workflow_id}/execute")
+async def execute_agent_workflow(
+    workflow_id: str,
+    input_data: dict,
+    agents=Depends(get_core_agents)
+):
+    """Execute a multi-agent workflow"""
+    try:
+        result = await agents.execute_campaign_workflow(workflow_id, input_data)
+        return result
+    except Exception as e:
+        logger.error(f"Workflow execution failed: {str(e)}")
+        return {"error": str(e)}, 500
+
+# ========== AGENTKIT API ENDPOINTS ==========
+
+@app.get("/api/agentkit/agents")
+async def list_agentkit_agents(
+    adapter=Depends(get_real_agentkit_adapter)
+):
+    """List all AgentKit agents"""
+    try:
+        result = await adapter.list_agents()
+        return {"agents": result}
+    except Exception as e:
+        logger.error(f"Agent listing failed: {str(e)}")
+        return {"error": str(e)}, 500
+
+@app.post("/api/agentkit/agents")
+async def create_agentkit_agent(
+    agent_config: dict,
+    adapter=Depends(get_real_agentkit_adapter)
+):
+    """Create a new AgentKit agent"""
+    try:
+        result = await adapter.create_agent(agent_config)
+        return result
+    except Exception as e:
+        logger.error(f"Agent creation failed: {str(e)}")
+        return {"error": str(e)}, 500
+
+@app.post("/api/agentkit/agents/{agent_id}/execute")
+async def execute_agentkit_agent(
+    agent_id: str,
+    execution_data: dict,
+    adapter=Depends(get_real_agentkit_adapter)
+):
+    """Execute an AgentKit agent"""
+    try:
+        result = await adapter.execute_agent(
+            agent_id,
+            execution_data.get("input_data", {}),
+            execution_data.get("context")
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Agent execution failed: {str(e)}")
+        return {"error": str(e)}, 500
+
+@app.get("/api/agentkit/health")
+async def agentkit_health_check(
+    adapter=Depends(get_real_agentkit_adapter)
+):
+    """AgentKit API health check"""
+    try:
+        result = await adapter.health_check()
+        return result
+    except Exception as e:
+        logger.error(f"AgentKit health check failed: {str(e)}")
         return {"error": str(e)}, 500
 
 

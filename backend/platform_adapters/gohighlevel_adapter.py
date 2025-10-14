@@ -78,18 +78,46 @@ class GoHighLevelAdapter:
         
         workflow = self.workflows[workflow_id]
         
-        result = {
-            'workflow_id': workflow_id,
-            'workflow_name': workflow['name'],
-            'input': data,
-            'output': {
-                'status': 'completed',
-                'message': f"Workflow {workflow['name']} executed",
-                'actions_completed': len(workflow['actions'])
-            },
-            'timestamp': datetime.utcnow().isoformat(),
-            'platform': 'gohighlevel'
-        }
+        # Execute workflow using real GoHighLevel API
+        try:
+            from integrations.gohighlevel.client import gohighlevel_integration
+            
+            # Execute workflow
+            success = await gohighlevel_integration.trigger_workflow(
+                organization_id="default",  # Would be passed from context
+                location_id="default",      # Would be passed from context
+                workflow_id=workflow_id,
+                contact_id=data.get('contact_id', 'default'),
+                trigger_data=data
+            )
+            
+            return {
+                'workflow_id': workflow_id,
+                'workflow_name': workflow['name'],
+                'input': data,
+                'output': {
+                    'status': 'completed' if success else 'failed',
+                    'message': f"Workflow {workflow['name']} executed {'successfully' if success else 'with errors'}",
+                    'actions_completed': len(workflow['actions']) if success else 0
+                },
+                'timestamp': datetime.utcnow().isoformat(),
+                'platform': 'gohighlevel'
+            }
+            
+        except Exception as e:
+            logger.error(f"GoHighLevel workflow execution failed: {str(e)}")
+            return {
+                'workflow_id': workflow_id,
+                'workflow_name': workflow['name'],
+                'input': data,
+                'output': {
+                    'status': 'error',
+                    'message': f"Workflow execution failed: {str(e)}",
+                    'actions_completed': 0
+                },
+                'timestamp': datetime.utcnow().isoformat(),
+                'platform': 'gohighlevel'
+            }
         
         return result
     

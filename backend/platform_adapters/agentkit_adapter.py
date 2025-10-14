@@ -42,19 +42,53 @@ class AgentKitAdapter:
         
         agent = self.agents[agent_id]
         
-        # Simulate agent execution (actual implementation would call OpenAI AgentKit API)
-        result = {
-            'agent_id': agent_id,
-            'agent_name': agent['name'],
-            'input': input_data,
-            'output': {
-                'status': 'completed',
-                'message': f"Agent {agent['name']} processed the request",
-                'result': 'Agent execution successful - AI key needed for actual processing'
-            },
-            'timestamp': datetime.utcnow().isoformat(),
-            'platform': 'agentkit'
-        }
+        # Execute agent using real AgentKit SDK
+        try:
+            from services.agentkit_sdk_client import AgentKitSDKClient
+            from models.agentkit_models import AgentExecutionRequest
+            
+            # Initialize real AgentKit client
+            agentkit_client = AgentKitSDKClient(api_key=self.api_key)
+            
+            # Create execution request
+            execution_request = AgentExecutionRequest(
+                agent_id=agent_id,
+                input_data=input_data,
+                organization_id="default"  # Would be passed from context
+            )
+            
+            # Execute agent
+            result = await agentkit_client.execute_agent(agent_id, execution_request)
+            
+            return {
+                'agent_id': agent_id,
+                'agent_name': agent['name'],
+                'input': input_data,
+                'output': {
+                    'status': 'completed',
+                    'message': f"Agent {agent['name']} processed the request successfully",
+                    'result': result.get('output_data', {}),
+                    'execution_id': result.get('execution_id'),
+                    'execution_time': result.get('execution_time_seconds', 0)
+                },
+                'timestamp': datetime.utcnow().isoformat(),
+                'platform': 'agentkit'
+            }
+            
+        except Exception as e:
+            logger.error(f"AgentKit execution failed: {str(e)}")
+            return {
+                'agent_id': agent_id,
+                'agent_name': agent['name'],
+                'input': input_data,
+                'output': {
+                    'status': 'error',
+                    'message': f"Agent execution failed: {str(e)}",
+                    'result': None
+                },
+                'timestamp': datetime.utcnow().isoformat(),
+                'platform': 'agentkit'
+            }
         
         return result
     
