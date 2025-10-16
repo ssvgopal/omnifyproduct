@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import PlatformSelector from '@/components/Dashboard/PlatformSelector';
 import BrainLogicPanel from '@/components/Dashboard/BrainLogicPanel';
 import AnalyticsDashboard from '@/components/Dashboard/AnalyticsDashboard';
+import EyesModule from '@/components/Dashboard/EyesModule';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -65,10 +66,11 @@ const Home = () => {
 
         {/* Main Dashboard Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
             <TabsTrigger value="brain-logic" data-testid="tab-brain-logic">Brain Logic</TabsTrigger>
             <TabsTrigger value="analytics" data-testid="tab-analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="eyes" data-testid="tab-eyes">EYES</TabsTrigger>
             <TabsTrigger value="integrations" data-testid="tab-integrations">Integrations</TabsTrigger>
           </TabsList>
 
@@ -131,6 +133,10 @@ const Home = () => {
 
           <TabsContent value="analytics">
             <AnalyticsDashboard />
+          </TabsContent>
+
+          <TabsContent value="eyes">
+            <EyesModule />
           </TabsContent>
 
           <TabsContent value="integrations">

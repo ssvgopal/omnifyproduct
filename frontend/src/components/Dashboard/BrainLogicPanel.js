@@ -18,7 +18,8 @@ import {
   Activity,
   CheckCircle,
   AlertTriangle,
-  Clock
+  Clock,
+  Eye
 } from 'lucide-react';
 
 const BrainLogicPanel = ({ onModuleSelect }) => {
@@ -31,6 +32,7 @@ const BrainLogicPanel = ({ onModuleSelect }) => {
       creative: { accuracy: 94, predictions: 1247, status: 'excellent' },
       market: { accuracy: 89, predictions: 892, status: 'good' },
       client: { accuracy: 91, predictions: 1156, status: 'excellent' },
+      eyes: { accuracy: 92, predictions: 1089, status: 'excellent' },
       customization: { accuracy: 87, predictions: 743, status: 'good' }
     });
   }, []);
@@ -71,6 +73,19 @@ const BrainLogicPanel = ({ onModuleSelect }) => {
         { name: 'Success Prediction', status: 'active', accuracy: 91 },
         { name: 'Churn Risk Analysis', status: 'active', accuracy: 89 },
         { name: 'Satisfaction Tracking', status: 'active', accuracy: 95 }
+      ],
+      color: 'purple',
+      gradient: 'from-purple-500 to-purple-600'
+    },
+    eyes: {
+      name: 'EYES - At-Risk Segments',
+      icon: Eye,
+      description: 'Advanced customer segmentation and churn prediction',
+      features: [
+        { name: 'Customer Clustering', status: 'active', accuracy: 94 },
+        { name: 'Churn Prediction', status: 'active', accuracy: 91 },
+        { name: 'Cross-Platform Analysis', status: 'active', accuracy: 88 },
+        { name: 'Retention Campaigns', status: 'active', accuracy: 93 }
       ],
       color: 'purple',
       gradient: 'from-purple-500 to-purple-600'
@@ -124,7 +139,7 @@ const BrainLogicPanel = ({ onModuleSelect }) => {
       </div>
       
       <Tabs value={activeModule} onValueChange={setActiveModule}>
-        <TabsList className="grid w-full grid-cols-4 bg-gray-100 p-1 rounded-lg">
+        <TabsList className="grid w-full grid-cols-5 bg-gray-100 p-1 rounded-lg">
           {Object.entries(modules).map(([key, module]) => {
             const Icon = module.icon;
             const stats = moduleStats[key] || {};
