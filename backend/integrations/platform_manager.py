@@ -21,6 +21,7 @@ from services.structured_logging import logger
 from services.production_secrets_manager import production_secrets_manager
 from services.production_tenant_manager import get_tenant_manager
 from services.production_rate_limiter import production_rate_limiter
+from services.cost_guardrails import cost_guardrails
 
 # Import platform integrations
 from integrations.google_ads.client import google_ads_integration
@@ -182,13 +183,46 @@ class PlatformIntegrationsManager:
         elif platform == Platform.META_ADS:
             return await self._handle_meta_ads_action(integration, action, organization_id, params)
         elif platform == Platform.LINKEDIN_ADS:
-            return await self._handle_linkedin_ads_action(integration, action, organization_id, params)
+            result = await self._handle_linkedin_ads_action(integration, action, organization_id, params)
+            try:
+                cost_info = self.cost_tracking.get(platform, {})
+                cost = float(cost_info.get("cost_per_request", 0))
+                if cost > 0:
+                    await cost_guardrails.record_cost(cost)
+            except Exception:
+                pass
+            return result
         elif platform == Platform.GOHIGHLEVEL:
-            return await self._handle_gohighlevel_action(integration, action, organization_id, params)
+            result = await self._handle_gohighlevel_action(integration, action, organization_id, params)
+            # Best-effort per-request cost tracking in low-cost mode
+            try:
+                cost_info = self.cost_tracking.get(platform, {})
+                cost = float(cost_info.get("cost_per_request", 0))
+                if cost > 0:
+                    await cost_guardrails.record_cost(cost)
+            except Exception:
+                pass
+            return result
         elif platform == Platform.SHOPIFY:
-            return await self._handle_shopify_action(integration, action, organization_id, params)
+            result = await self._handle_shopify_action(integration, action, organization_id, params)
+            try:
+                cost_info = self.cost_tracking.get(platform, {})
+                cost = float(cost_info.get("cost_per_request", 0))
+                if cost > 0:
+                    await cost_guardrails.record_cost(cost)
+            except Exception:
+                pass
+            return result
         elif platform == Platform.STRIPE:
-            return await self._handle_stripe_action(integration, action, organization_id, params)
+            result = await self._handle_stripe_action(integration, action, organization_id, params)
+            try:
+                cost_info = self.cost_tracking.get(platform, {})
+                cost = float(cost_info.get("cost_per_request", 0))
+                if cost > 0:
+                    await cost_guardrails.record_cost(cost)
+            except Exception:
+                pass
+            return result
         else:
             raise ValueError(f"No handler for platform {platform}")
 
