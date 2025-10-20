@@ -28,6 +28,7 @@ from services.omnify_core_agents import core_agents
 from services.predictive_intelligence import initialize_predictive_intelligence
 from services.production_circuit_breaker import get_circuit_breaker
 from services.cost_guardrails import cost_guardrails
+from services.idempotency_middleware import idempotency_middleware
 
 # Configure logging
 logging.basicConfig(
@@ -192,6 +193,12 @@ async def low_cost_guardrails(request: Request, call_next):
         ttl = int(os.getenv("CACHE_TTL_SECONDS", "600"))
         response.headers.setdefault("Cache-Control", f"public, max-age={ttl}")
     return response
+
+
+# ========== IDEMPOTENCY MIDDLEWARE ==========
+@app.middleware("http")
+async def idempotency_layer(request: Request, call_next):
+    return await idempotency_middleware(request, call_next)
 
 
 # ========== COST USAGE ENDPOINT ==========
