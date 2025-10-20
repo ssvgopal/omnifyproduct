@@ -42,6 +42,15 @@ Headers: X-Organization-Id: <org_id>
 ```
 Returns current RPM, daily usage, and remaining quotas.
 
+### Quota Response Headers
+When enabled, all responses include approximate remaining quotas:
+```
+X-Quota-RPM-Remaining: <n>
+X-Quota-RequestsToday-Remaining: <n>
+X-Quota-TokensToday-Remaining: <n>
+X-Cost-Monthly-Remaining-USD: <amount>
+```
+
 ## 🧪 Recommended Usage Patterns
 - Cache expensive GET endpoints for 5–15 minutes (CDN + client-side memoization).
 - Batch LLM calls and summarize early; cap max tokens.

@@ -175,6 +175,18 @@ async def low_cost_guardrails(request: Request, call_next):
     response = await call_next(request)
 
     # Add basic cache headers for GET requests to encourage CDN/client caching
+    if cost_guardrails.is_enabled():
+        # Expose basic quota headers
+        try:
+            snapshot = await cost_guardrails.get_usage_snapshot(tenant_key)
+            remaining = snapshot.get("remaining", {})
+            response.headers["X-Quota-RPM-Remaining"] = str(remaining.get("rpm_remaining", 0))
+            response.headers["X-Quota-RequestsToday-Remaining"] = str(remaining.get("requests_today_remaining", 0))
+            response.headers["X-Quota-TokensToday-Remaining"] = str(remaining.get("tokens_today_remaining", 0))
+            response.headers["X-Cost-Monthly-Remaining-USD"] = str(remaining.get("monthly_cost_remaining_usd", 0))
+        except Exception:
+            pass
+
     if cost_guardrails.is_enabled() and request.method == "GET":
         # Default Cache-Control for GETs; fine-tune per-route as needed
         ttl = int(os.getenv("CACHE_TTL_SECONDS", "600"))
