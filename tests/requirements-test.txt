@@ -1,6 +1,49 @@
-pytest==8.4.2
-pytest-asyncio==0.21.1
-pytest-cov==4.1.0
-httpx==0.25.2
-faker==20.1.0
-mongomock==4.1.2
+# Test requirements for OmniFy
+# Additional packages needed for testing
+
+# Testing framework
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+pytest-xdist>=3.3.0
+pytest-timeout>=2.1.0
+pytest-mock>=3.11.0
+pytest-html>=3.2.0
+
+# HTTP testing
+httpx>=0.24.0
+requests>=2.31.0
+
+# Database testing
+mongomock>=4.1.0
+fakeredis>=2.18.0
+
+# Performance testing
+locust>=2.16.0
+psutil>=5.9.0
+
+# Test data generation
+faker>=19.3.0
+factory-boy>=3.2.0
+
+# Code quality
+black>=23.7.0
+flake8>=6.0.0
+isort>=5.12.0
+mypy>=1.5.0
+bandit>=1.7.0
+
+# Security testing
+safety>=2.3.0
+
+# Coverage reporting
+coverage>=7.2.0
+codecov>=2.1.0
+
+# Load testing
+pytest-benchmark>=4.0.0
+memory-profiler>=0.60.0
+
+# Mock and fixtures
+responses>=0.23.0
+freezegun>=1.2.0
