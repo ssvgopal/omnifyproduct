@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: omnify-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: omnify-api
+  template:
+    metadata:
+      labels:
+        app: omnify-api
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/OWNER/REPO-api:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env:
+            - name: ENVIRONMENT
+              value: production
+            - name: MONGO_URL
+              valueFrom:
+                secretKeyRef:
+                  name: omnify-secrets
+                  key: MONGO_URL
+            - name: DB_NAME
+              value: omnify_cloud
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: omnify-secrets
+                  key: JWT_SECRET_KEY
+            - name: LOW_COST_MODE
+              value: "true"
+            - name: LLM_MAX_TOKENS
+              value: "512"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: omnify-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: omnify-frontend
+  template:
+    metadata:
+      labels:
+        app: omnify-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/OWNER/REPO-frontend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+

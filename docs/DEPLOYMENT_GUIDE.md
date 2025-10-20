@@ -10,6 +10,37 @@ This comprehensive deployment guide provides step-by-step instructions for deplo
 |-------------|----------|------------|------|----------|
 | **Docker Compose** | Development, Testing, Demos | Low | Free | 5 minutes |
 | **Cloud Kubernetes** | Production, Scaling | High | $200-500/month | 2-4 hours |
+## 🛠️ CI/CD (GitHub Actions)
+
+### Pipeline Summary
+- Lint and test backend
+- Build and push Docker images to GHCR
+- Deploy to Kubernetes (staging/prod)
+
+### Setup
+1) In GitHub repo settings → Actions → Secrets, add:
+   - `CR_PAT` (GitHub Container Registry token if needed)
+   - `KUBE_CONFIG_STAGING` (base64 kubeconfig)
+   - `KUBE_CONFIG_PROD` (base64 kubeconfig)
+   - Any cloud provider-specific secrets
+
+2) Commit `.github/workflows/ci.yml` (included in repo)
+
+## ☸️ Kubernetes Manifests
+
+### Files
+- `k8s/deployment.yaml` – API and frontend Deployments
+- `k8s/service.yaml` – ClusterIP Services
+- `k8s/ingress.yaml` – Ingress with TLS annotations
+
+### Apply
+```bash
+kubectl apply -f k8s/
+```
+
+### Environment
+Set required env via ConfigMap/Secret or external Secret Manager. Reference `.env.example`.
+
 | **Serverless** | Variable Workloads | Medium | $50-200/month | 1-2 hours |
 | **Hybrid Cloud** | Enterprise | High | $500-2000/month | 4-8 hours |
 
