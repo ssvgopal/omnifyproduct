@@ -104,6 +104,43 @@ class CostGuardrails:
             self._monthly_cost_usd += usd_amount
         return True
 
+    async def get_usage_snapshot(self, tenant_key: str) -> Dict[str, Any]:
+        """Return approximate current usage and limits for a tenant."""
+        now = time.time()
+        minute_window_start = now - 60.0
+        date_key = time.strftime("%Y-%m-%d", time.gmtime(now))
+
+        async with self._lock:
+            times = self._per_minute_times.get(tenant_key, []).copy()
+            rpm = len([t for t in times if t >= minute_window_start])
+            requests_today = self._daily_requests.get(date_key, {}).get(tenant_key, 0)
+            tokens_today = self._daily_tokens.get(date_key, {}).get(tenant_key, 0)
+            cost_month = self._monthly_cost_usd
+
+        return {
+            "enabled": self._enabled,
+            "limits": {
+                "rate_limit_rpm": self._rate_limit_rpm,
+                "quota_requests_per_day": self._quota_requests_per_day,
+                "quota_tokens_per_day": self._quota_tokens_per_day,
+                "monthly_cap_usd": self._monthly_cap_usd,
+                "llm_default_model": self._llm_default_model,
+                "llm_max_tokens": self._llm_max_tokens,
+            },
+            "usage": {
+                "current_rpm": rpm,
+                "requests_today": requests_today,
+                "tokens_today": tokens_today,
+                "estimated_monthly_cost_usd": cost_month,
+            },
+            "remaining": {
+                "rpm_remaining": max(self._rate_limit_rpm - rpm, 0),
+                "requests_today_remaining": max(self._quota_requests_per_day - requests_today, 0),
+                "tokens_today_remaining": max(self._quota_tokens_per_day - tokens_today, 0),
+                "monthly_cost_remaining_usd": max(self._monthly_cap_usd - cost_month, 0.0),
+            },
+        }
+
 
 # Global singleton for app-wide usage
 cost_guardrails = CostGuardrails()

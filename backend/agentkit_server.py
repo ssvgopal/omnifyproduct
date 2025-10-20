@@ -173,7 +173,26 @@ async def low_cost_guardrails(request: Request, call_next):
         )
 
     response = await call_next(request)
+
+    # Add basic cache headers for GET requests to encourage CDN/client caching
+    if cost_guardrails.is_enabled() and request.method == "GET":
+        # Default Cache-Control for GETs; fine-tune per-route as needed
+        ttl = int(os.getenv("CACHE_TTL_SECONDS", "600"))
+        response.headers.setdefault("Cache-Control", f"public, max-age={ttl}")
     return response
+
+
+# ========== COST USAGE ENDPOINT ==========
+@app.get("/api/cost/usage")
+async def get_cost_usage(request: Request):
+    """Get current tenant's cost/usage snapshot (low-cost mode)."""
+    tenant_key = request.headers.get("X-Organization-Id") or request.headers.get("X-Tenant-Id")
+    if not tenant_key:
+        client = request.client
+        tenant_key = getattr(client, "host", "anonymous") if client else "anonymous"
+
+    snapshot = await cost_guardrails.get_usage_snapshot(tenant_key)
+    return snapshot
 
 
 # Dependency injection for services

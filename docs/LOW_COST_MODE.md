@@ -34,12 +34,27 @@ LLM_MAX_TOKENS=512
 - Tenant identity is derived from `X-Organization-Id`/`X-Tenant-Id` headers; falls back to client IP if missing.
 - LLM usage should call `cost_guardrails.record_tokens(tenant, tokens)` and `cost_guardrails.record_cost(usd)` where applicable (extend gradually in LLM call sites).
 
+### Cost/Usage API
+You can query current usage and limits:
+```bash
+GET /api/cost/usage
+Headers: X-Organization-Id: <org_id>
+```
+Returns current RPM, daily usage, and remaining quotas.
+
 ## 🧪 Recommended Usage Patterns
 - Cache expensive GET endpoints for 5–15 minutes (CDN + client-side memoization).
 - Batch LLM calls and summarize early; cap max tokens.
 - Prefer webhooks over polling for platform integrations.
 - Schedule EYES analytics hourly/daily and serve stored results in UI.
 - Gate premium features (AgentKit, advanced models) by plan.
+
+### Cache Headers
+When Low-Cost Mode is enabled, GET responses automatically include:
+```
+Cache-Control: public, max-age=<CACHE_TTL_SECONDS>
+```
+Tune per endpoint if needed.
 
 ## 🚨 Limits & Notes
 - The in-process limits are approximate and best for a single-instance deployment. For multi-instance setups, use Redis-backed rate limiting.
