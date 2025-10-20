@@ -41,6 +41,12 @@ kubectl apply -f k8s/
 ### Environment
 Set required env via ConfigMap/Secret or external Secret Manager. Reference `.env.example`.
 
+#### Secrets Template
+Use `k8s/secrets.example.yaml` as a template, edit values, and apply as a Secret:
+```bash
+kubectl apply -f k8s/secrets.yaml
+```
+
 | **Serverless** | Variable Workloads | Medium | $50-200/month | 1-2 hours |
 | **Hybrid Cloud** | Enterprise | High | $500-2000/month | 4-8 hours |
 
