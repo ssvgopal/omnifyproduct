@@ -5,6 +5,7 @@ import AnalyticsDashboard from '@/components/Dashboard/AnalyticsDashboard';
 import EyesModule from '@/components/Dashboard/EyesModule';
 import ProactiveIntelligenceDashboard from '@/components/Dashboard/ProactiveIntelligenceDashboard';
 import MagicalOnboardingWizard from '@/components/Onboarding/MagicalOnboardingWizard';
+import InstantValueDeliveryDashboard from '@/components/Dashboard/InstantValueDeliveryDashboard';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -68,13 +69,14 @@ const Home = () => {
 
         {/* Main Dashboard Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
             <TabsTrigger value="brain-logic" data-testid="tab-brain-logic">Brain Logic</TabsTrigger>
             <TabsTrigger value="analytics" data-testid="tab-analytics">Analytics</TabsTrigger>
             <TabsTrigger value="eyes" data-testid="tab-eyes">EYES</TabsTrigger>
             <TabsTrigger value="proactive-intelligence" data-testid="tab-proactive-intelligence">🧠 Proactive AI</TabsTrigger>
             <TabsTrigger value="onboarding" data-testid="tab-onboarding">🎯 Onboarding</TabsTrigger>
+            <TabsTrigger value="instant-value" data-testid="tab-instant-value">⚡ Instant Value</TabsTrigger>
             <TabsTrigger value="integrations" data-testid="tab-integrations">Integrations</TabsTrigger>
           </TabsList>
 
@@ -149,6 +151,10 @@ const Home = () => {
 
           <TabsContent value="onboarding">
             <MagicalOnboardingWizard />
+          </TabsContent>
+
+          <TabsContent value="instant-value">
+            <InstantValueDeliveryDashboard />
           </TabsContent>
 
           <TabsContent value="integrations">
