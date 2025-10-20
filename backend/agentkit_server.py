@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 from api.agentkit_routes import router as agentkit_router
 from api.auth_routes import router as auth_router
 from api.kong_routes import router as kong_router
+from api.temporal_routes import router as temporal_router
 
 # Import database schema manager
 from database.mongodb_schema import MongoDBSchema
@@ -33,6 +34,7 @@ from services.idempotency_middleware import idempotency_middleware
 from services.oidc_auth import oidc_auth_service # Import OIDC auth service
 from services.opa_policy_engine import opa_client # Import OPA policy engine
 from services.kong_gateway import kong_client # Import Kong gateway client
+from services.temporal_orchestration import temporal_service # Import Temporal orchestration service
 
 # Configure logging
 logging.basicConfig(
@@ -147,6 +149,19 @@ async def lifespan(app: FastAPI):
         "gateway": kong_health.get("gateway", "disabled")
     })
 
+    # Initialize Temporal Workflow Orchestration
+    temporal_connected = await temporal_service.connect()
+    if temporal_connected:
+        worker_started = await temporal_service.start_worker()
+        temporal_health = await temporal_service.health_check()
+        logger.info("✅ Temporal Workflow Orchestration initialized", extra={
+            "temporal_enabled": temporal_health.get("temporal_enabled", False),
+            "connected": temporal_health.get("connected", False),
+            "worker_running": temporal_health.get("worker_running", False)
+        })
+    else:
+        logger.warning("⚠️ Temporal connection failed - workflows will be disabled")
+
     logger.info("✅ Omnify Cloud Connect started successfully with AgentKit Hybrid")
 
     yield
@@ -156,10 +171,11 @@ async def lifespan(app: FastAPI):
     if real_agentkit_adapter:
         await real_agentkit_adapter.close()
     
-    # Close OIDC and OPA services
+    # Close OIDC, OPA, Kong, and Temporal services
     await oidc_auth_service.close()
     await opa_client.close()
     await kong_client.close()
+    await temporal_service.close()
     
     client.close()
     logger.info("✅ Shutdown complete")
@@ -281,6 +297,7 @@ def get_db():
 app.include_router(auth_router)
 app.include_router(agentkit_router)
 app.include_router(kong_router)
+app.include_router(temporal_router)
 
 
 # ========== CORE API ENDPOINTS ==========
@@ -371,8 +388,16 @@ async def health_check():
         logger.error(f"Kong health check failed: {str(e)}")
         kong_status = "unhealthy"
     
+    # Check Temporal service
+    try:
+        temporal_health = await temporal_service.health_check()
+        temporal_status = temporal_health.get("status", "unhealthy")
+    except Exception as e:
+        logger.error(f"Temporal health check failed: {str(e)}")
+        temporal_status = "unhealthy"
+    
     overall_status = "healthy"
-    if db_status != "healthy" or oidc_status != "healthy" or opa_status != "healthy" or kong_status != "healthy":
+    if db_status != "healthy" or oidc_status != "healthy" or opa_status != "healthy" or kong_status != "healthy" or temporal_status != "healthy":
         overall_status = "degraded"
     
     return {
@@ -382,6 +407,7 @@ async def health_check():
             "oidc_auth": oidc_status,
             "opa_policy": opa_status,
             "kong_gateway": kong_status,
+            "temporal_orchestration": temporal_status,
             "agentkit": "operational",
             "api": "operational"
         },

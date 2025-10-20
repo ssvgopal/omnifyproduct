@@ -1,0 +1,238 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: temporal-config
+  namespace: omnify-oss
+data:
+  TEMPORAL_CLI_ADDRESS: temporal:7233
+  TEMPORAL_CLI_TLS_CERT_PATH: ""
+  TEMPORAL_CLI_TLS_KEY_PATH: ""
+  TEMPORAL_CLI_TLS_CA_PATH: ""
+  TEMPORAL_CLI_TLS_SERVER_NAME: ""
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: temporal-secret
+  namespace: omnify-oss
+type: Opaque
+data:
+  # Base64 encoded values - replace with actual values
+  TEMPORAL_DB_PASSWORD: cG9zdGdyZXMxMjM=  # postgres123
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-temporal
+  namespace: omnify-oss
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-temporal
+  template:
+    metadata:
+      labels:
+        app: postgres-temporal
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15
+        env:
+        - name: POSTGRES_DB
+          value: temporal
+        - name: POSTGRES_USER
+          value: temporal
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: temporal-secret
+              key: TEMPORAL_DB_PASSWORD
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: postgres-storage
+        persistentVolumeClaim:
+          claimName: postgres-temporal-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-temporal-pvc
+  namespace: omnify-oss
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-temporal
+  namespace: omnify-oss
+spec:
+  selector:
+    app: postgres-temporal
+  ports:
+  - port: 5432
+    targetPort: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: temporal-server
+  namespace: omnify-oss
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: temporal-server
+  template:
+    metadata:
+      labels:
+        app: temporal-server
+    spec:
+      containers:
+      - name: temporal-server
+        image: temporalio/auto-setup:1.22.0
+        env:
+        - name: DB
+          value: postgresql
+        - name: DB_PORT
+          value: "5432"
+        - name: POSTGRES_USER
+          value: temporal
+        - name: POSTGRES_PWD
+          valueFrom:
+            secretKeyRef:
+              name: temporal-secret
+              key: TEMPORAL_DB_PASSWORD
+        - name: POSTGRES_SEEDS
+          value: postgres-temporal
+        - name: DYNAMIC_CONFIG_FILE_PATH
+          value: /etc/temporal/config/dynamicconfig/development-sql.yaml
+        ports:
+        - containerPort: 7233
+          name: grpc
+        - containerPort: 8233
+          name: http
+        volumeMounts:
+        - name: temporal-config
+          mountPath: /etc/temporal/config/dynamicconfig
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8233
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8233
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+      volumes:
+      - name: temporal-config
+        configMap:
+          name: temporal-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: temporal
+  namespace: omnify-oss
+spec:
+  selector:
+    app: temporal-server
+  ports:
+  - name: grpc
+    port: 7233
+    targetPort: 7233
+  - name: http
+    port: 8233
+    targetPort: 8233
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: temporal-web
+  namespace: omnify-oss
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: temporal-web
+  template:
+    metadata:
+      labels:
+        app: temporal-web
+    spec:
+      containers:
+      - name: temporal-web
+        image: temporalio/ui:2.21.3
+        env:
+        - name: TEMPORAL_ADDRESS
+          value: temporal:7233
+        - name: TEMPORAL_CORS_ORIGINS
+          value: "*"
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: temporal-web
+  namespace: omnify-oss
+spec:
+  selector:
+    app: temporal-web
+  ports:
+  - port: 8080
+    targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: temporal-web-ingress
+  namespace: omnify-oss
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  rules:
+  - host: temporal.omnify.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: temporal-web
+            port:
+              number: 8080
