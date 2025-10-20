@@ -24,12 +24,12 @@ from services.production_rate_limiter import production_rate_limiter
 from services.cost_guardrails import cost_guardrails
 
 # Import platform integrations
-from integrations.google_ads.client import google_ads_integration
-from integrations.meta_ads.client import meta_ads_integration
-from integrations.gohighlevel.client import gohighlevel_integration
-from integrations.linkedin.client import linkedin_ads_integration
-from integrations.shopify.client import shopify_integration
-from integrations.stripe.client import stripe_integration
+from integrations.google_ads.client import GoogleAdsAdapter
+from integrations.meta_ads.client import MetaAdsAdapter
+from integrations.gohighlevel.client import GoHighLevelAdapter
+# from integrations.linkedin.client import linkedin_ads_integration
+# from integrations.shopify.client import shopify_integration
+# from integrations.stripe.client import stripe_integration
 
 class Platform(Enum):
     """Supported advertising and marketing platforms"""
@@ -48,12 +48,12 @@ class PlatformIntegrationsManager:
 
     def __init__(self):
         self.platforms = {
-            Platform.GOOGLE_ADS: google_ads_integration,
-            Platform.META_ADS: meta_ads_integration,
-            Platform.LINKEDIN_ADS: linkedin_ads_integration,
-            Platform.GOHIGHLEVEL: gohighlevel_integration,
-            Platform.SHOPIFY: shopify_integration,
-            Platform.STRIPE: stripe_integration
+            Platform.GOOGLE_ADS: GoogleAdsAdapter(),
+            Platform.META_ADS: MetaAdsAdapter(),
+            Platform.GOHIGHLEVEL: GoHighLevelAdapter(),
+            # Platform.LINKEDIN_ADS: linkedin_ads_integration,
+            # Platform.SHOPIFY: shopify_integration,
+            # Platform.STRIPE: stripe_integration
         }
 
         # Platform capabilities mapping
@@ -66,38 +66,71 @@ class PlatformIntegrationsManager:
                 "campaign_management", "audience_targeting", "creative_optimization",
                 "performance_analytics", "conversion_tracking", "ad_creation"
             ],
-            Platform.LINKEDIN_ADS: [
-                "campaign_management", "b2b_targeting", "professional_audiences",
-                "performance_analytics", "lead_generation", "sponsored_content"
-            ],
             Platform.GOHIGHLEVEL: [
                 "contact_management", "workflow_automation", "email_campaigns",
                 "opportunity_tracking", "appointment_scheduling", "crm_integration"
-            ],
-            Platform.SHOPIFY: [
-                "product_management", "order_processing", "inventory_tracking",
-                "customer_management", "analytics_reporting", "ecommerce_automation"
-            ],
-            Platform.STRIPE: [
-                "payment_processing", "subscription_management", "invoice_generation",
-                "customer_billing", "refund_processing", "webhook_handling"
             ]
+            # Platform.LINKEDIN_ADS: [
+            #     "campaign_management", "b2b_targeting", "professional_audiences",
+            #     "performance_analytics", "lead_generation", "sponsored_content"
+            # ],
+            # Platform.SHOPIFY: [
+            #     "product_management", "order_processing", "inventory_tracking",
+            #     "customer_management", "analytics_reporting", "ecommerce_automation"
+            # ],
+            # Platform.STRIPE: [
+            #     "payment_processing", "subscription_management", "invoice_generation",
+            #     "customer_billing", "refund_processing", "webhook_handling"
+            # ]
         }
 
         # Cost tracking
         self.cost_tracking = {
             Platform.GOOGLE_ADS: {"cost_per_request": 0.001, "monthly_free": 10000},
             Platform.META_ADS: {"cost_per_request": 0.001, "monthly_free": 200000},
-            Platform.LINKEDIN_ADS: {"cost_per_request": 0.002, "monthly_free": 50000},
-            Platform.GOHIGHLEVEL: {"cost_per_request": 0.0005, "monthly_free": 100000},
-            Platform.SHOPIFY: {"cost_per_request": 0.0001, "monthly_free": 1000000},
-            Platform.STRIPE: {"cost_per_request": 0.0001, "monthly_free": 1000000}
+            Platform.GOHIGHLEVEL: {"cost_per_request": 0.0005, "monthly_free": 100000}
+            # Platform.LINKEDIN_ADS: {"cost_per_request": 0.002, "monthly_free": 50000},
+            # Platform.SHOPIFY: {"cost_per_request": 0.0001, "monthly_free": 1000000},
+            # Platform.STRIPE: {"cost_per_request": 0.0001, "monthly_free": 1000000}
         }
 
         logger.info("Platform integrations manager initialized", extra={
             "platforms_count": len(self.platforms),
             "total_capabilities": sum(len(caps) for caps in self.platform_capabilities.values())
         })
+
+    async def initialize_platforms(self, organization_id: str):
+        """Initialize all platform integrations with credentials"""
+        try:
+            for platform_enum, adapter in self.platforms.items():
+                # Get platform credentials from secrets manager
+                credentials = await production_secrets_manager.get_platform_credentials(
+                    organization_id, platform_enum.value
+                )
+                
+                if credentials:
+                    await adapter.initialize(credentials)
+                    logger.info(f"Initialized {platform_enum.value} adapter", extra={
+                        "organization_id": organization_id,
+                        "platform": platform_enum.value
+                    })
+                else:
+                    logger.warning(f"No credentials found for {platform_enum.value}", extra={
+                        "organization_id": organization_id,
+                        "platform": platform_enum.value
+                    })
+            
+            logger.info("All platform integrations initialized", extra={
+                "organization_id": organization_id,
+                "platforms_count": len(self.platforms)
+            })
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize platform integrations: {e}", extra={
+                "organization_id": organization_id,
+                "error": str(e)
+            })
+            raise
 
     # ========== UNIFIED PLATFORM INTERFACE ==========
 
