@@ -26,6 +26,7 @@ from api.instant_value_routes import router as instant_value_router
 from api.orchestration_routes import router as orchestration_router
 from api.predictive_routes import router as predictive_routes
 from api.adaptive_learning_routes import router as adaptive_learning_router
+from api.expert_intervention_routes import router as expert_intervention_router
 
 # Import database schema manager
 from database.mongodb_schema import MongoDBSchema
@@ -53,6 +54,7 @@ from services.instant_value_delivery_system import get_instant_value_system # Im
 from services.customer_orchestration_dashboard import get_orchestration_dashboard # Import Customer Orchestration Dashboard
 from services.predictive_intelligence_dashboard import get_predictive_intelligence_dashboard # Import Predictive Intelligence Dashboard
 from services.adaptive_client_learning_system import get_adaptive_learning_system # Import Adaptive Client Learning System
+from services.human_expert_intervention_system import get_human_expert_system # Import Human Expert Intervention System
 
 # Configure logging
 logging.basicConfig(
@@ -255,6 +257,14 @@ async def lifespan(app: FastAPI):
         "personality_types": len(adaptive_learning_system.personality_weights)
     })
 
+    # Initialize Human Expert Intervention System
+    human_expert_system = await get_human_expert_system(db)
+    logger.info("✅ Human Expert Intervention System initialized", extra={
+        "expert_count": len(human_expert_system.expert_profiles),
+        "active_interventions": len(human_expert_system.active_interventions),
+        "workflows": len(human_expert_system.intervention_workflows)
+    })
+
     logger.info("✅ Omnify Cloud Connect started successfully with AgentKit Hybrid")
 
     yield
@@ -403,6 +413,7 @@ app.include_router(instant_value_router)
 app.include_router(orchestration_router)
 app.include_router(predictive_routes)
 app.include_router(adaptive_learning_router)
+app.include_router(expert_intervention_router)
 
 
 # ========== CORE API ENDPOINTS ==========
