@@ -24,6 +24,7 @@ from api.proactive_intelligence_routes import router as proactive_intelligence_r
 from api.onboarding_routes import router as onboarding_router
 from api.instant_value_routes import router as instant_value_router
 from api.orchestration_routes import router as orchestration_router
+from api.predictive_routes import router as predictive_routes
 
 # Import database schema manager
 from database.mongodb_schema import MongoDBSchema
@@ -49,6 +50,7 @@ from services.proactive_intelligence_engine import get_proactive_intelligence_en
 from services.magical_onboarding_wizard import get_onboarding_wizard # Import Magical Onboarding Wizard
 from services.instant_value_delivery_system import get_instant_value_system # Import Instant Value Delivery System
 from services.customer_orchestration_dashboard import get_orchestration_dashboard # Import Customer Orchestration Dashboard
+from services.predictive_intelligence_dashboard import get_predictive_intelligence_dashboard # Import Predictive Intelligence Dashboard
 
 # Configure logging
 logging.basicConfig(
@@ -235,6 +237,14 @@ async def lifespan(app: FastAPI):
         "active_sessions": len(orchestration_dashboard.active_sessions)
     })
 
+    # Initialize Predictive Intelligence Dashboard
+    predictive_dashboard = get_predictive_intelligence_dashboard(db)
+    logger.info("✅ Predictive Intelligence Dashboard initialized", extra={
+        "prediction_types": len(predictive_dashboard.prediction_types),
+        "trend_metrics": len(predictive_dashboard.trend_metrics),
+        "opportunity_types": len(predictive_dashboard.opportunity_types)
+    })
+
     logger.info("✅ Omnify Cloud Connect started successfully with AgentKit Hybrid")
 
     yield
@@ -381,6 +391,7 @@ app.include_router(proactive_intelligence_router)
 app.include_router(onboarding_router)
 app.include_router(instant_value_router)
 app.include_router(orchestration_router)
+app.include_router(predictive_routes)
 
 
 # ========== CORE API ENDPOINTS ==========
