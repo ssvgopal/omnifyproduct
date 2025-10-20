@@ -66,6 +66,13 @@ Tune per endpoint if needed.
 - Add per-endpoint costs and route high-cost calls through stricter quotas.
 - Implement token usage accounting in all LLM call sites.
 
+### LLM Token/Cost Tracking (best-effort)
+- Agent executions record estimated tokens and cost automatically (based on input/output sizes and `LLM_TOKEN_COST_PER_1K_USD`).
+- Configure unit cost if desired:
+```bash
+LLM_TOKEN_COST_PER_1K_USD=0.03
+```
+
 ## 📂 Files
 - `backend/services/cost_guardrails.py` – guardrails implementation
 - `backend/agentkit_server.py` – middleware wiring

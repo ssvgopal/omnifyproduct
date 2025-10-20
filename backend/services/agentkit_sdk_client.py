@@ -33,6 +33,7 @@ from models.agentkit_models import (
     WorkflowDefinition, WorkflowExecution, AgentType, AgentStatus,
     WorkflowStatus, AgentAuditLog
 )
+from services.cost_guardrails import cost_guardrails
 
 logger = logging.getLogger(__name__)
 
@@ -388,7 +389,7 @@ class AgentKitSDKClient:
                         {"role": "user", "content": json.dumps(request.input_data)}
                     ],
                     temperature=agent["temperature"],
-                    max_tokens=2000
+                    max_tokens=min(2000, int(os.getenv("LLM_MAX_TOKENS", "512")))
                 )
                 output = response.choices[0].message.content
 
@@ -396,6 +397,19 @@ class AgentKitSDKClient:
             execution_time = (end_time - start_time).total_seconds()
 
             logger.info(f"Agent executed: {agent_id}, execution_time: {execution_time}s")
+
+            # Best-effort token/cost estimation in low-cost mode
+            try:
+                tenant_key = request.organization_id or "anonymous"
+                # Rough token estimate: input + output length / 4
+                est_tokens = int((len(json.dumps(request.input_data)) + len(str(output))) / 4)
+                await cost_guardrails.record_tokens(tenant_key, est_tokens)
+                # Rough cost estimate (USD) using a placeholder unit cost
+                unit_cost = float(os.getenv("LLM_TOKEN_COST_PER_1K_USD", "0.03"))
+                est_cost = (est_tokens / 1000.0) * unit_cost
+                await cost_guardrails.record_cost(est_cost)
+            except Exception:
+                pass
 
             return {
                 "execution_id": f"exec_{uuid.uuid4().hex[:16]}",
