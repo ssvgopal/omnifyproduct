@@ -32,6 +32,7 @@ This comprehensive deployment guide provides step-by-step instructions for deplo
 - `k8s/deployment.yaml` – API and frontend Deployments
 - `k8s/service.yaml` – ClusterIP Services
 - `k8s/ingress.yaml` – Ingress with TLS annotations
+- `k8s/hpa.yaml` – Horizontal Pod Autoscaler for API
 
 ### Apply
 ```bash
