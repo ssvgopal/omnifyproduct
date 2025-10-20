@@ -1,0 +1,173 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opa-config
+  namespace: omnify-oss
+data:
+  config.yaml: |
+    services:
+      omnify-api:
+        url: http://omnify-api:8000
+    
+    bundles:
+      omnify-authz:
+        service: omnify-api
+        resource: /bundles/omnify-authz
+        polling:
+          min_delay_seconds: 10
+          max_delay_seconds: 30
+    
+    decision_logs:
+      service: omnify-api
+      reporting:
+        min_delay_seconds: 10
+        max_delay_seconds: 30
+  
+  omnify-authz.rego: |
+    package omnify.authz
+    
+    import rego.v1
+    
+    # Default deny
+    default allow := false
+    
+    # Allow if user has required permission
+    allow if {
+        input.user.permissions[_] == input.resource.action
+    }
+    
+    # Allow if user has admin role
+    allow if {
+        input.user.roles[_] == "admin"
+    }
+    
+    # Allow if user has manager role and resource is organization-scoped
+    allow if {
+        input.user.roles[_] == "manager"
+        input.resource.attributes.scope == "organization"
+    }
+    
+    # Allow if user has user role and action is read/write on campaigns
+    allow if {
+        input.user.roles[_] == "user"
+        input.resource.name == "campaigns"
+        input.resource.action in ["read", "write"]
+    }
+    
+    # Allow if user has viewer role and action is read
+    allow if {
+        input.user.roles[_] == "viewer"
+        input.resource.action == "read"
+    }
+    
+    # Deny delete operations unless admin
+    allow if {
+        input.resource.action == "delete"
+        input.user.roles[_] == "admin"
+    }
+    
+    # Organization access control
+    allow if {
+        input.user.organization_id == input.resource.attributes.organization_id
+        input.resource.action in ["read", "write"]
+    }
+    
+    # Time-based access (example: business hours only)
+    allow if {
+        input.resource.action == "read"
+        hour := time.clock(input.environment.timestamp)[0]
+        hour >= 9
+        hour <= 17
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opa
+  namespace: omnify-oss
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opa
+  template:
+    metadata:
+      labels:
+        app: opa
+    spec:
+      containers:
+      - name: opa
+        image: openpolicyagent/opa:0.58.0
+        args:
+        - run
+        - --server
+        - --config-file=/config/config.yaml
+        - --addr=0.0.0.0:8181
+        - --diagnostic-addr=0.0.0.0:8282
+        ports:
+        - containerPort: 8181
+          name: http
+        - containerPort: 8282
+          name: diag
+        volumeMounts:
+        - name: opa-config
+          mountPath: /config
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8181
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8181
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+      volumes:
+      - name: opa-config
+        configMap:
+          name: opa-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opa
+  namespace: omnify-oss
+spec:
+  selector:
+    app: opa
+  ports:
+  - name: http
+    port: 8181
+    targetPort: 8181
+  - name: diag
+    port: 8282
+    targetPort: 8282
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: opa-ingress
+  namespace: omnify-oss
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: opa.omnify.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: opa
+            port:
+              number: 8181

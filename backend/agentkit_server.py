@@ -29,6 +29,8 @@ from services.predictive_intelligence import initialize_predictive_intelligence
 from services.production_circuit_breaker import get_circuit_breaker
 from services.cost_guardrails import cost_guardrails
 from services.idempotency_middleware import idempotency_middleware
+from services.oidc_auth import oidc_auth_service # Import OIDC auth service
+from services.opa_policy_engine import opa_client # Import OPA policy engine
 
 # Configure logging
 logging.basicConfig(
@@ -119,6 +121,22 @@ async def lifespan(app: FastAPI):
     init_celery_services(db, revolutionary_agentkit)
     logger.info("Celery services initialized")
 
+    # Initialize OIDC Authentication Service
+    oidc_health = await oidc_auth_service.health_check()
+    logger.info("✅ OIDC Authentication Service initialized", extra={
+        "keycloak_enabled": oidc_health.get("providers", {}).get("keycloak", {}).get("enabled", False),
+        "internal_auth_enabled": oidc_health.get("providers", {}).get("internal", {}).get("enabled", False),
+        "active_sessions": oidc_health.get("active_sessions", 0)
+    })
+
+    # Initialize OPA Policy Engine
+    opa_health = await opa_client.health_check()
+    logger.info("✅ OPA Policy Engine initialized", extra={
+        "opa_enabled": opa_health.get("opa_enabled", False),
+        "opa_status": opa_health.get("opa_status", "disabled"),
+        "fallback_policies": opa_health.get("fallback_policies", 0)
+    })
+
     logger.info("✅ Omnify Cloud Connect started successfully with AgentKit Hybrid")
 
     yield
@@ -127,6 +145,11 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down Omnify Cloud Connect...")
     if real_agentkit_adapter:
         await real_agentkit_adapter.close()
+    
+    # Close OIDC and OPA services
+    await oidc_auth_service.close()
+    await opa_client.close()
+    
     client.close()
     logger.info("✅ Shutdown complete")
 
@@ -312,10 +335,32 @@ async def health_check():
         logger.error(f"Database health check failed: {str(e)}")
         db_status = "unhealthy"
     
+    # Check OIDC service
+    try:
+        oidc_health = await oidc_auth_service.health_check()
+        oidc_status = oidc_health.get("status", "unhealthy")
+    except Exception as e:
+        logger.error(f"OIDC health check failed: {str(e)}")
+        oidc_status = "unhealthy"
+    
+    # Check OPA service
+    try:
+        opa_health = await opa_client.health_check()
+        opa_status = opa_health.get("status", "unhealthy")
+    except Exception as e:
+        logger.error(f"OPA health check failed: {str(e)}")
+        opa_status = "unhealthy"
+    
+    overall_status = "healthy"
+    if db_status != "healthy" or oidc_status != "healthy" or opa_status != "healthy":
+        overall_status = "degraded"
+    
     return {
-        "status": "healthy" if db_status == "healthy" else "degraded",
+        "status": overall_status,
         "services": {
             "database": db_status,
+            "oidc_auth": oidc_status,
+            "opa_policy": opa_status,
             "agentkit": "operational",
             "api": "operational"
         },

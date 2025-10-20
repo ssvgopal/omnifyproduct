@@ -1,0 +1,237 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: omnify-oss
+  labels:
+    name: omnify-oss
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: keycloak-secret
+  namespace: omnify-oss
+type: Opaque
+data:
+  # Base64 encoded values - replace with actual values
+  # echo -n "your-password" | base64
+  KEYCLOAK_ADMIN_PASSWORD: YWRtaW4tMTIz  # admin-123
+  KEYCLOAK_DB_PASSWORD: cG9zdGdyZXMxMjM=  # postgres123
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-config
+  namespace: omnify-oss
+data:
+  KEYCLOAK_DATABASE: keycloak
+  KEYCLOAK_DB_USER: keycloak
+  KEYCLOAK_DB_HOST: postgres-keycloak
+  KEYCLOAK_DB_PORT: "5432"
+  KEYCLOAK_HOSTNAME: keycloak.omnify.local
+  KEYCLOAK_HTTP_PORT: "8080"
+  KEYCLOAK_HTTPS_PORT: "8443"
+  KEYCLOAK_PROXY: edge
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-keycloak
+  namespace: omnify-oss
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-keycloak
+  template:
+    metadata:
+      labels:
+        app: postgres-keycloak
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15
+        env:
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: keycloak-config
+              key: KEYCLOAK_DATABASE
+        - name: POSTGRES_USER
+          valueFrom:
+            configMapKeyRef:
+              name: keycloak-config
+              key: KEYCLOAK_DB_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: keycloak-secret
+              key: KEYCLOAK_DB_PASSWORD
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: postgres-storage
+        persistentVolumeClaim:
+          claimName: postgres-keycloak-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-keycloak-pvc
+  namespace: omnify-oss
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-keycloak
+  namespace: omnify-oss
+spec:
+  selector:
+    app: postgres-keycloak
+  ports:
+  - port: 5432
+    targetPort: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: omnify-oss
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+    spec:
+      containers:
+      - name: keycloak
+        image: quay.io/keycloak/keycloak:23.0
+        args:
+        - start
+        - --hostname=keycloak.omnify.local
+        - --http-port=8080
+        - --https-port=8443
+        - --proxy=edge
+        - --db=postgres
+        env:
+        - name: KEYCLOAK_ADMIN
+          value: admin
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: keycloak-secret
+              key: KEYCLOAK_ADMIN_PASSWORD
+        - name: KC_DB
+          value: postgres
+        - name: KC_DB_URL
+          value: jdbc:postgresql://postgres-keycloak:5432/keycloak
+        - name: KC_DB_USERNAME
+          valueFrom:
+            configMapKeyRef:
+              name: keycloak-config
+              key: KEYCLOAK_DB_USER
+        - name: KC_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: keycloak-secret
+              key: KEYCLOAK_DB_PASSWORD
+        - name: KC_HOSTNAME
+          valueFrom:
+            configMapKeyRef:
+              name: keycloak-config
+              key: KEYCLOAK_HOSTNAME
+        - name: KC_HTTP_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: keycloak-config
+              key: KEYCLOAK_HTTP_PORT
+        - name: KC_HTTPS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: keycloak-config
+              key: KEYCLOAK_HTTPS_PORT
+        - name: KC_PROXY
+          valueFrom:
+            configMapKeyRef:
+              name: keycloak-config
+              key: KEYCLOAK_PROXY
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 8443
+          name: https
+        readinessProbe:
+          httpGet:
+            path: /realms/master
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /realms/master
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: omnify-oss
+spec:
+  selector:
+    app: keycloak
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  - name: https
+    port: 8443
+    targetPort: 8443
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: keycloak-ingress
+  namespace: omnify-oss
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  rules:
+  - host: keycloak.omnify.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: keycloak
+            port:
+              number: 8080
