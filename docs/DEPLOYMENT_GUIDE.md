@@ -27,6 +27,18 @@ This comprehensive deployment guide provides step-by-step instructions for deplo
 2) Commit `.github/workflows/ci.yml` (included in repo)
 
 ## ☸️ Kubernetes Manifests
+## 📦 Helm Chart
+
+### Usage
+```bash
+helm upgrade --install omnify helm/ \
+  --set image.api=ghcr.io/<owner>/<repo>-api:latest \
+  --set image.frontend=ghcr.io/<owner>/<repo>-frontend:latest \
+  --set ingress.hosts.api=api.yourdomain.com \
+  --set ingress.hosts.app=app.yourdomain.com
+```
+
+Edit `helm/values.yaml` for defaults (replicas, TLS secret, env). Ensure `omnify-secrets` exists in the namespace.
 
 ### Files
 - `k8s/deployment.yaml` – API and frontend Deployments

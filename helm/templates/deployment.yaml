@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "omnifyproduct.fullname" . }}-api
+spec:
+  replicas: {{ .Values.replicaCount.api }}
+  selector:
+    matchLabels:
+      app: {{ include "omnifyproduct.fullname" . }}-api
+  template:
+    metadata:
+      labels:
+        app: {{ include "omnifyproduct.fullname" . }}-api
+    spec:
+      containers:
+        - name: api
+          image: {{ .Values.image.api }}
+          ports:
+            - containerPort: 8000
+          env:
+            - name: ENVIRONMENT
+              value: production
+            - name: MONGO_URL
+              valueFrom:
+                secretKeyRef:
+                  name: omnify-secrets
+                  key: MONGO_URL
+            - name: DB_NAME
+              value: {{ .Values.env.DB_NAME | quote }}
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: omnify-secrets
+                  key: JWT_SECRET_KEY
+            - name: LOW_COST_MODE
+              value: {{ .Values.env.LOW_COST_MODE | quote }}
+            - name: LLM_MAX_TOKENS
+              value: {{ .Values.env.LLM_MAX_TOKENS | quote }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "omnifyproduct.fullname" . }}-frontend
+spec:
+  replicas: {{ .Values.replicaCount.frontend }}
+  selector:
+    matchLabels:
+      app: {{ include "omnifyproduct.fullname" . }}-frontend
+  template:
+    metadata:
+      labels:
+        app: {{ include "omnifyproduct.fullname" . }}-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: {{ .Values.image.frontend }}
+          ports:
+            - containerPort: 3000
+

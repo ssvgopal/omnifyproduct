@@ -1,0 +1,23 @@
+image:
+  api: ghcr.io/OWNER/REPO-api:latest
+  frontend: ghcr.io/OWNER/REPO-frontend:latest
+
+replicaCount:
+  api: 1
+  frontend: 1
+
+env:
+  LOW_COST_MODE: "true"
+  DB_NAME: omnify_cloud
+  LLM_MAX_TOKENS: "512"
+
+ingress:
+  enabled: true
+  className: nginx
+  tls:
+    enabled: true
+    secretName: omnify-tls
+  hosts:
+    api: api.omnify.example.com
+    app: app.omnify.example.com
+
