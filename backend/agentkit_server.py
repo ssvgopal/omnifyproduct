@@ -27,6 +27,7 @@ from api.orchestration_routes import router as orchestration_router
 from api.predictive_routes import router as predictive_routes
 from api.adaptive_learning_routes import router as adaptive_learning_router
 from api.expert_intervention_routes import router as expert_intervention_router
+from api.critical_decision_routes import router as critical_decision_router
 
 # Import database schema manager
 from database.mongodb_schema import MongoDBSchema
@@ -55,6 +56,7 @@ from services.customer_orchestration_dashboard import get_orchestration_dashboar
 from services.predictive_intelligence_dashboard import get_predictive_intelligence_dashboard # Import Predictive Intelligence Dashboard
 from services.adaptive_client_learning_system import get_adaptive_learning_system # Import Adaptive Client Learning System
 from services.human_expert_intervention_system import get_human_expert_system # Import Human Expert Intervention System
+from services.critical_decision_hand_holding_system import get_critical_decision_system # Import Critical Decision Hand-Holding System
 
 # Configure logging
 logging.basicConfig(
@@ -265,6 +267,14 @@ async def lifespan(app: FastAPI):
         "workflows": len(human_expert_system.intervention_workflows)
     })
 
+    # Initialize Critical Decision Hand-Holding System
+    critical_decision_system = await get_critical_decision_system(db)
+    logger.info("✅ Critical Decision Hand-Holding System initialized", extra={
+        "active_decisions": len(critical_decision_system.active_decisions),
+        "decision_templates": len(critical_decision_system.decision_templates),
+        "guidance_templates": len(critical_decision_system.guidance_templates)
+    })
+
     logger.info("✅ Omnify Cloud Connect started successfully with AgentKit Hybrid")
 
     yield
@@ -414,6 +424,7 @@ app.include_router(orchestration_router)
 app.include_router(predictive_routes)
 app.include_router(adaptive_learning_router)
 app.include_router(expert_intervention_router)
+app.include_router(critical_decision_router)
 
 
 # ========== CORE API ENDPOINTS ==========

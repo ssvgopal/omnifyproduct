@@ -10,6 +10,7 @@ import CustomerOrchestrationDashboard from '@/components/Dashboard/CustomerOrche
 import PredictiveIntelligenceDashboard from '@/components/Dashboard/PredictiveIntelligenceDashboard';
 import AdaptiveClientLearningDashboard from '@/components/Dashboard/AdaptiveClientLearningDashboard';
 import HumanExpertInterventionDashboard from '@/components/Dashboard/HumanExpertInterventionDashboard';
+import CriticalDecisionHandHoldingDashboard from '@/components/Dashboard/CriticalDecisionHandHoldingDashboard';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -85,6 +86,7 @@ const Home = () => {
             <TabsTrigger value="predictive-intelligence" data-testid="tab-predictive-intelligence">🔮 Predictive AI</TabsTrigger>
             <TabsTrigger value="adaptive-learning" data-testid="tab-adaptive-learning">🧠 Adaptive Learning</TabsTrigger>
             <TabsTrigger value="expert-intervention" data-testid="tab-expert-intervention">👥 Expert Intervention</TabsTrigger>
+            <TabsTrigger value="critical-decision" data-testid="tab-critical-decision">🤝 Critical Decision</TabsTrigger>
             <TabsTrigger value="integrations" data-testid="tab-integrations">Integrations</TabsTrigger>
           </TabsList>
 
@@ -179,6 +181,10 @@ const Home = () => {
 
           <TabsContent value="expert-intervention">
             <HumanExpertInterventionDashboard />
+          </TabsContent>
+
+          <TabsContent value="critical-decision">
+            <CriticalDecisionHandHoldingDashboard />
           </TabsContent>
 
           <TabsContent value="integrations">
