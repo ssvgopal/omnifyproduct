@@ -3,7 +3,7 @@ AgentKit-First Server for Omnify Cloud Connect
 Main FastAPI application with AgentKit integration
 """
 
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from contextlib import asynccontextmanager
@@ -27,6 +27,7 @@ from services.real_agentkit_adapter import RealAgentKitAdapter, agentkit_adapter
 from services.omnify_core_agents import core_agents
 from services.predictive_intelligence import initialize_predictive_intelligence
 from services.production_circuit_breaker import get_circuit_breaker
+from services.cost_guardrails import cost_guardrails
 
 # Configure logging
 logging.basicConfig(
@@ -145,6 +146,34 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ========== LOW-COST MODE MIDDLEWARE ==========
+@app.middleware("http")
+async def low_cost_guardrails(request: Request, call_next):
+    """Lightweight, in-process guardrails for low-cost deployments."""
+    if not cost_guardrails.is_enabled():
+        return await call_next(request)
+
+    # Derive a tenant key: prefer organization header, then auth user, then IP
+    tenant_key = request.headers.get("X-Organization-Id") or request.headers.get("X-Tenant-Id")
+    if not tenant_key:
+        # Fallback: remote address (coarse)
+        client = request.client
+        tenant_key = getattr(client, "host", "anonymous") if client else "anonymous"
+
+    allowed = await cost_guardrails.allow_request(tenant_key)
+    if not allowed:
+        return FastAPI().responses.JSONResponse(
+            status_code=429,
+            content={
+                "error": "rate_limited",
+                "message": "Low-cost mode: Rate limit or daily quota exceeded. Try later.",
+            },
+        )
+
+    response = await call_next(request)
+    return response
 
 
 # Dependency injection for services
