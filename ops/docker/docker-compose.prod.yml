@@ -1,0 +1,319 @@
+# Production-ready Docker Compose for OmniFy Cloud Connect
+version: "3.9"
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: omnify-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-omnify_secure_password_2024}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-omnify}
+    volumes:
+      - mongodb_data:/data/db
+      - ./ops/docker/mongodb-init:/docker-entrypoint-initdb.d
+    ports:
+      - "27017:27017"
+    networks:
+      - omnify-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  # Redis Cache
+  redis:
+    image: redis:7.2-alpine
+    container_name: omnify-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-omnify_redis_secure_2024}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - omnify-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: ops/docker/Dockerfile.backend
+    container_name: omnify-backend
+    restart: unless-stopped
+    environment:
+      # Database
+      MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-omnify_secure_password_2024}@mongodb:27017/${MONGO_DATABASE:-omnify}?authSource=admin
+      REDIS_URL: redis://:${REDIS_PASSWORD:-omnify_redis_secure_2024}@redis:6379/0
+      
+      # API Configuration
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      API_WORKERS: 4
+      
+      # Security
+      SECRET_KEY: ${SECRET_KEY:-omnify_super_secret_key_change_in_production_2024}
+      JWT_SECRET: ${JWT_SECRET:-omnify_jwt_secret_change_in_production_2024}
+      
+      # External APIs
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      AGENTKIT_API_KEY: ${AGENTKIT_API_KEY}
+      
+      # Platform Integrations
+      GOHIGHLEVEL_API_KEY: ${GOHIGHLEVEL_API_KEY}
+      META_ACCESS_TOKEN: ${META_ACCESS_TOKEN}
+      META_APP_ID: ${META_APP_ID}
+      META_APP_SECRET: ${META_APP_SECRET}
+      GOOGLE_ADS_DEVELOPER_TOKEN: ${GOOGLE_ADS_DEVELOPER_TOKEN}
+      GOOGLE_ADS_CLIENT_ID: ${GOOGLE_ADS_CLIENT_ID}
+      GOOGLE_ADS_CLIENT_SECRET: ${GOOGLE_ADS_CLIENT_SECRET}
+      GOOGLE_ADS_REFRESH_TOKEN: ${GOOGLE_ADS_REFRESH_TOKEN}
+      GOOGLE_ADS_CUSTOMER_ID: ${GOOGLE_ADS_CUSTOMER_ID}
+      
+      # Environment
+      ENVIRONMENT: production
+      LOG_LEVEL: INFO
+      DEBUG: false
+      
+      # Celery
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-omnify_redis_secure_2024}@redis:6379/1
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD:-omnify_redis_secure_2024}@redis:6379/2
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    networks:
+      - omnify-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+
+  # Celery Worker
+  celery-worker:
+    build:
+      context: .
+      dockerfile: ops/docker/Dockerfile.backend
+    container_name: omnify-celery-worker
+    restart: unless-stopped
+    command: celery -A services.celery_app worker --loglevel=info --concurrency=4
+    environment:
+      # Same environment as backend
+      MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-omnify_secure_password_2024}@mongodb:27017/${MONGO_DATABASE:-omnify}?authSource=admin
+      REDIS_URL: redis://:${REDIS_PASSWORD:-omnify_redis_secure_2024}@redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-omnify_super_secret_key_change_in_production_2024}
+      JWT_SECRET: ${JWT_SECRET:-omnify_jwt_secret_change_in_production_2024}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      AGENTKIT_API_KEY: ${AGENTKIT_API_KEY}
+      GOHIGHLEVEL_API_KEY: ${GOHIGHLEVEL_API_KEY}
+      META_ACCESS_TOKEN: ${META_ACCESS_TOKEN}
+      META_APP_ID: ${META_APP_ID}
+      META_APP_SECRET: ${META_APP_SECRET}
+      GOOGLE_ADS_DEVELOPER_TOKEN: ${GOOGLE_ADS_DEVELOPER_TOKEN}
+      GOOGLE_ADS_CLIENT_ID: ${GOOGLE_ADS_CLIENT_ID}
+      GOOGLE_ADS_CLIENT_SECRET: ${GOOGLE_ADS_CLIENT_SECRET}
+      GOOGLE_ADS_REFRESH_TOKEN: ${GOOGLE_ADS_REFRESH_TOKEN}
+      GOOGLE_ADS_CUSTOMER_ID: ${GOOGLE_ADS_CUSTOMER_ID}
+      ENVIRONMENT: production
+      LOG_LEVEL: INFO
+      DEBUG: false
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-omnify_redis_secure_2024}@redis:6379/1
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD:-omnify_redis_secure_2024}@redis:6379/2
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - omnify-network
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+
+  # Celery Beat (Scheduler)
+  celery-beat:
+    build:
+      context: .
+      dockerfile: ops/docker/Dockerfile.backend
+    container_name: omnify-celery-beat
+    restart: unless-stopped
+    command: celery -A services.celery_app beat --loglevel=info
+    environment:
+      # Same environment as backend
+      MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-omnify_secure_password_2024}@mongodb:27017/${MONGO_DATABASE:-omnify}?authSource=admin
+      REDIS_URL: redis://:${REDIS_PASSWORD:-omnify_redis_secure_2024}@redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-omnify_super_secret_key_change_in_production_2024}
+      JWT_SECRET: ${JWT_SECRET:-omnify_jwt_secret_change_in_production_2024}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      AGENTKIT_API_KEY: ${AGENTKIT_API_KEY}
+      GOHIGHLEVEL_API_KEY: ${GOHIGHLEVEL_API_KEY}
+      META_ACCESS_TOKEN: ${META_ACCESS_TOKEN}
+      META_APP_ID: ${META_APP_ID}
+      META_APP_SECRET: ${META_APP_SECRET}
+      GOOGLE_ADS_DEVELOPER_TOKEN: ${GOOGLE_ADS_DEVELOPER_TOKEN}
+      GOOGLE_ADS_CLIENT_ID: ${GOOGLE_ADS_CLIENT_ID}
+      GOOGLE_ADS_CLIENT_SECRET: ${GOOGLE_ADS_CLIENT_SECRET}
+      GOOGLE_ADS_REFRESH_TOKEN: ${GOOGLE_ADS_REFRESH_TOKEN}
+      GOOGLE_ADS_CUSTOMER_ID: ${GOOGLE_ADS_CUSTOMER_ID}
+      ENVIRONMENT: production
+      LOG_LEVEL: INFO
+      DEBUG: false
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-omnify_redis_secure_2024}@redis:6379/1
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD:-omnify_redis_secure_2024}@redis:6379/2
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - omnify-network
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+
+  # Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: ops/docker/Dockerfile.frontend
+    container_name: omnify-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - omnify-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: omnify-nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infrastructure/nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - omnify-network
+    depends_on:
+      - backend
+      - frontend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Monitoring - Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: omnify-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./infrastructure/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - omnify-network
+
+  # Monitoring - Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: omnify-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-omnify_grafana_2024}
+      GF_USERS_ALLOW_SIGN_UP: false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infrastructure/logging/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./infrastructure/logging/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3001:3000"
+    networks:
+      - omnify-network
+    depends_on:
+      - prometheus
+
+  # Logging - Loki
+  loki:
+    image: grafana/loki:latest
+    container_name: omnify-loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./infrastructure/logging/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+    networks:
+      - omnify-network
+
+  # Logging - Promtail
+  promtail:
+    image: grafana/promtail:latest
+    container_name: omnify-promtail
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./infrastructure/logging/promtail-config.yml:/etc/promtail/config.yml:ro
+      - ./logs:/var/log/omnify:ro
+    networks:
+      - omnify-network
+    depends_on:
+      - loki
+
+volumes:
+  mongodb_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  loki_data:
+    driver: local
+
+networks:
+  omnify-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

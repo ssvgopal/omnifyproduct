@@ -1,0 +1,309 @@
+# OmniFy Helm Chart - values.yaml
+# Default values for omnify chart
+
+# Global configuration
+global:
+  imageRegistry: ghcr.io/omnifyproduct
+  imageTag: latest
+  imagePullSecrets:
+    - name: ghcr-secret
+
+# Application configuration
+app:
+  name: omnify
+  namespace: omnify
+  environment: production
+  
+# Backend configuration
+backend:
+  enabled: true
+  image:
+    repository: omnify-backend
+    tag: ""
+    pullPolicy: IfNotPresent
+  
+  replicaCount: 3
+  
+  service:
+    type: ClusterIP
+    port: 8000
+    targetPort: 8000
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  
+  env:
+    ENVIRONMENT: production
+    LOG_LEVEL: INFO
+    DEBUG: "false"
+    API_WORKERS: "4"
+
+# Frontend configuration
+frontend:
+  enabled: true
+  image:
+    repository: omnify-frontend
+    tag: ""
+    pullPolicy: IfNotPresent
+  
+  replicaCount: 2
+  
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+  
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# Celery Worker configuration
+celeryWorker:
+  enabled: true
+  image:
+    repository: omnify-backend
+    tag: ""
+    pullPolicy: IfNotPresent
+  
+  replicaCount: 2
+  
+  resources:
+    limits:
+      cpu: 300m
+      memory: 512Mi
+    requests:
+      cpu: 150m
+      memory: 256Mi
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# Celery Beat configuration
+celeryBeat:
+  enabled: true
+  image:
+    repository: omnify-backend
+    tag: ""
+    pullPolicy: IfNotPresent
+  
+  replicaCount: 1
+  
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+  
+  hosts:
+    - host: api.omnify.com
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: omnify-backend-service
+              port:
+                number: 8000
+    - host: app.omnify.com
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: omnify-frontend-service
+              port:
+                number: 80
+  
+  tls:
+    - secretName: omnify-tls
+      hosts:
+        - api.omnify.com
+        - app.omnify.com
+
+# MongoDB configuration
+mongodb:
+  enabled: true
+  auth:
+    enabled: true
+    rootUsername: admin
+    rootPassword: omnify_secure_password_2024
+    database: omnify
+    username: omnify
+    password: omnify_user_password_2024
+  
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: ""
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+
+# Redis configuration
+redis:
+  enabled: true
+  auth:
+    enabled: true
+    password: omnify_redis_secure_2024
+  
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+      storageClass: ""
+    
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+  
+  replica:
+    replicaCount: 1
+    persistence:
+      enabled: true
+      size: 4Gi
+      storageClass: ""
+    
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+
+# Monitoring configuration
+monitoring:
+  prometheus:
+    enabled: true
+    server:
+      persistentVolume:
+        enabled: true
+        size: 10Gi
+        storageClass: ""
+      
+      resources:
+        limits:
+          cpu: 200m
+          memory: 512Mi
+        requests:
+          cpu: 100m
+          memory: 256Mi
+  
+  grafana:
+    enabled: true
+    adminPassword: omnify_grafana_2024
+    
+    persistence:
+      enabled: true
+      size: 5Gi
+      storageClass: ""
+    
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+# Persistence configuration
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi
+
+# Security configuration
+security:
+  podSecurityContext:
+    fsGroup: 1000
+    runAsNonRoot: true
+    runAsUser: 1000
+  
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1000
+
+# Service account configuration
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Network policies
+networkPolicy:
+  enabled: true
+  ingress:
+    enabled: true
+  egress:
+    enabled: true

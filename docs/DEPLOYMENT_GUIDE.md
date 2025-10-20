@@ -1,643 +1,513 @@
-# 🚀 OmniFy Cloud Connect - Professional Deployment Guide
-
-## 📋 Executive Summary
-
-This comprehensive deployment guide provides step-by-step instructions for deploying OmniFy Cloud Connect across different environments, from local development to production. The guide includes secure key management, professional UI implementation, and scalable deployment strategies.
-
-## 🎯 Deployment Options Overview
-
-| Environment | Use Case | Complexity | Cost | Timeline |
-|-------------|----------|------------|------|----------|
-| **Docker Compose** | Development, Testing, Demos | Low | Free | 5 minutes |
-| **Cloud Kubernetes** | Production, Scaling | High | $200-500/month | 2-4 hours |
-## 🛠️ CI/CD (GitHub Actions)
-
-### Pipeline Summary
-- Lint and test backend
-- Build and push Docker images to GHCR
-- Deploy to Kubernetes (staging/prod)
-
-### Setup
-1) In GitHub repo settings → Actions → Secrets, add:
-   - `CR_PAT` (GitHub Container Registry token if needed)
-   - `KUBE_CONFIG_STAGING` (base64 kubeconfig)
-   - `KUBE_CONFIG_PROD` (base64 kubeconfig)
-   - Any cloud provider-specific secrets
-
-2) Commit `.github/workflows/ci.yml` (included in repo)
-
-## ☸️ Kubernetes Manifests
-## 📦 Helm Chart
-
-### Usage
-```bash
-helm upgrade --install omnify helm/ \
-  --set image.api=ghcr.io/<owner>/<repo>-api:latest \
-  --set image.frontend=ghcr.io/<owner>/<repo>-frontend:latest \
-  --set ingress.hosts.api=api.yourdomain.com \
-  --set ingress.hosts.app=app.yourdomain.com
-```
-
-Edit `helm/values.yaml` for defaults (replicas, TLS secret, env). Ensure `omnify-secrets` exists in the namespace.
-
-### Files
-- `k8s/deployment.yaml` – API and frontend Deployments
-- `k8s/service.yaml` – ClusterIP Services
-- `k8s/ingress.yaml` – Ingress with TLS annotations
-- `k8s/hpa.yaml` – Horizontal Pod Autoscaler for API
-
-### Apply
-```bash
-kubectl apply -f k8s/
-```
-
-### Environment
-Set required env via ConfigMap/Secret or external Secret Manager. Reference `.env.example`.
-
-#### Secrets Template
-Use `k8s/secrets.example.yaml` as a template, edit values, and apply as a Secret:
-```bash
-kubectl apply -f k8s/secrets.yaml
-```
-
-| **Serverless** | Variable Workloads | Medium | $50-200/month | 1-2 hours |
-| **Hybrid Cloud** | Enterprise | High | $500-2000/month | 4-8 hours |
-
-## 🔐 Secure Key Management System
-
-### **Environment Configuration**
-
-The system uses a comprehensive `.env` file for secure key management:
-
-```bash
-# Copy the example file
-cp env.example .env
-
-# Edit with your actual keys
-nano .env
-```
-
-### **Required API Keys**
-
-#### **Core AI Services**
-```bash
-# OpenAI API Key (Required)
-OPENAI_API_KEY=sk-your_openai_api_key_here
-
-# AgentKit API Key (Optional - falls back to OpenAI)
-AGENTKIT_API_KEY=your_agentkit_api_key_here
-```
-
-#### **Platform Integrations**
-```bash
-# GoHighLevel Integration
-GOHIGHLEVEL_API_KEY=your_gohighlevel_api_key_here
-GOHIGHLEVEL_LOCATION_ID=your_location_id_here
-
-# Meta Ads Integration
-META_APP_ID=your_meta_app_id_here
-META_APP_SECRET=your_meta_app_secret_here
-META_ACCESS_TOKEN=your_meta_access_token_here
-
-# Google Ads Integration
-GOOGLE_ADS_CLIENT_ID=your_google_ads_client_id_here
-GOOGLE_ADS_CLIENT_SECRET=your_google_ads_client_secret_here
-GOOGLE_ADS_REFRESH_TOKEN=your_google_ads_refresh_token_here
-GOOGLE_ADS_DEVELOPER_TOKEN=your_google_ads_developer_token_here
-
-# LinkedIn Ads Integration
-LINKEDIN_CLIENT_ID=your_linkedin_client_id_here
-LINKEDIN_CLIENT_SECRET=your_linkedin_client_secret_here
-
-# Shopify Integration
-SHOPIFY_CLIENT_ID=your_shopify_client_id_here
-SHOPIFY_CLIENT_SECRET=your_shopify_client_secret_here
-
-# Stripe Integration
-STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key_here
-STRIPE_WEBHOOK_SECRET=whsec_your_stripe_webhook_secret_here
-```
-
-### **Security Best Practices**
-
-1. **Never commit `.env` files to version control**
-2. **Use different keys for different environments**
-3. **Rotate keys regularly**
-4. **Use environment-specific secrets management**
-5. **Implement proper access controls**
-
-## 🐳 Docker Compose Deployment (Recommended)
-
-### **Quick Start (5 Minutes)**
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/your-org/omnify-cloud-connect.git
-cd omnify-cloud-connect
-
-# 2. Make deployment script executable
-chmod +x deploy.sh
-
-# 3. Run the deployment script
-./deploy.sh
-```
-
-### **Manual Deployment**
-
-```bash
-# 1. Setup environment
-cp env.example .env
-# Edit .env with your API keys
-
-# 2. Generate secure passwords
-openssl rand -base64 32  # For MongoDB
-openssl rand -base64 32  # For Redis
-openssl rand -base64 48  # For JWT
-
-# 3. Start services
-docker-compose up --build -d
-
-# 4. Check health
-curl http://localhost:8000/health
-curl http://localhost:3000
-```
-
-### **Service URLs**
-
-| Service | URL | Purpose |
-|---------|-----|---------|
-| **Frontend** | http://localhost:3000 | Main application |
-| **Backend API** | http://localhost:8000 | API endpoints |
-| **API Docs** | http://localhost:8000/docs | Swagger documentation |
-| **Grafana** | http://localhost:3001 | Monitoring dashboard |
-| **Prometheus** | http://localhost:9090 | Metrics collection |
-| **MongoDB** | localhost:27017 | Database |
-| **Redis** | localhost:6379 | Cache |
-
-## ☁️ Cloud Kubernetes Deployment
-
-### **Prerequisites**
-
-- Kubernetes cluster (GKE, EKS, AKS)
-- kubectl configured
-- Helm 3.x installed
-- Docker registry access
-
-### **Deployment Steps**
-
-```bash
-# 1. Create namespace
-kubectl create namespace omnify
-
-# 2. Create secrets
-kubectl create secret generic omnify-secrets \
-  --from-env-file=.env \
-  --namespace=omnify
-
-# 3. Deploy with Helm
-helm install omnify ./helm-chart \
-  --namespace=omnify \
-  --set image.tag=latest \
-  --set ingress.enabled=true \
-  --set ingress.host=omnify.yourdomain.com
-
-# 4. Check deployment
-kubectl get pods -n omnify
-kubectl get services -n omnify
-```
-
-### **Production Configuration**
-
-```yaml
-# values-production.yaml
-replicaCount: 3
-
-image:
-  repository: your-registry/omnify
-  tag: "v1.0.0"
-  pullPolicy: IfNotPresent
-
-service:
-  type: ClusterIP
-  port: 80
-
-ingress:
-  enabled: true
-  className: "nginx"
-  annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
-  hosts:
-    - host: omnify.yourdomain.com
-      paths:
-        - path: /
-          pathType: Prefix
-  tls:
-    - secretName: omnify-tls
-      hosts:
-        - omnify.yourdomain.com
-
-resources:
-  limits:
-    cpu: 1000m
-    memory: 1Gi
-  requests:
-    cpu: 500m
-    memory: 512Mi
-
-autoscaling:
-  enabled: true
-  minReplicas: 2
-  maxReplicas: 10
-  targetCPUUtilizationPercentage: 70
-```
-
-## ⚡ Serverless Deployment
-
-### **AWS Lambda + API Gateway**
-
-```bash
-# 1. Install serverless framework
-npm install -g serverless
-
-# 2. Configure AWS credentials
-aws configure
-
-# 3. Deploy
-serverless deploy
-
-# 4. Get endpoint URL
-serverless info
-```
-
-### **Vercel Deployment**
-
-```bash
-# 1. Install Vercel CLI
-npm install -g vercel
-
-# 2. Login to Vercel
-vercel login
-
-# 3. Deploy frontend
-cd frontend
-vercel --prod
-
-# 4. Set environment variables
-vercel env add OPENAI_API_KEY
-vercel env add GOHIGHLEVEL_API_KEY
-# ... add all required keys
-```
-
-## 🎨 Professional UI Implementation
-
-### **Design System Components**
-
-The enhanced UI includes:
-
-#### **Modern Dashboard Components**
-- **Metric Cards**: Professional gradient backgrounds with trend indicators
-- **Data Tables**: Sortable, filterable tables with hover effects
-- **Charts**: Interactive charts with real-time data
-- **Navigation**: Clean sidebar with contextual icons
-
-#### **Enhanced Brain Logic Panel**
-- **Module Cards**: Visual representation of AI modules
-- **Performance Metrics**: Real-time accuracy and prediction counts
-- **Learning Progress**: Visual progress indicators
-- **Status Badges**: Color-coded system status
-
-#### **Analytics Dashboard**
-- **Time Range Selector**: Easy period selection
-- **Platform Comparison**: Side-by-side performance metrics
-- **Predictive Analytics**: Future trend predictions
-- **Interactive Charts**: Drill-down capabilities
-
-### **UI Features**
-
-1. **Responsive Design**: Works on all device sizes
-2. **Dark Mode**: Toggle between light and dark themes
-3. **Accessibility**: WCAG 2.1 AA compliant
-4. **Animations**: Smooth transitions and micro-interactions
-5. **Loading States**: Professional loading indicators
-6. **Error Handling**: User-friendly error messages
-
-## 🔧 Configuration Management
-
-### **Environment-Specific Configs**
-
-#### **Development**
-```bash
-ENVIRONMENT=development
-DEBUG=true
-LOG_LEVEL=DEBUG
-CORS_ORIGINS=http://localhost:3000,http://localhost:3001
-```
-
-#### **Staging**
-```bash
-ENVIRONMENT=staging
-DEBUG=false
-LOG_LEVEL=INFO
-CORS_ORIGINS=https://staging.omnify.com
-```
-
-#### **Production**
-```bash
-ENVIRONMENT=production
-DEBUG=false
-LOG_LEVEL=WARN
-CORS_ORIGINS=https://omnify.com,https://app.omnify.com
-```
-
-### **Feature Flags**
-
-```bash
-# Enable/disable features
-ENABLE_PREDICTIVE_INTELLIGENCE=true
-ENABLE_AUTONOMOUS_DECISIONS=false
-ENABLE_ADVANCED_ANALYTICS=true
-ENABLE_WHITE_LABEL=true
-```
-
-## 📊 Monitoring & Observability
-
-### **Health Checks**
-
-```bash
-# Backend health
-curl http://localhost:8000/health
-
-# Frontend health
-curl http://localhost:3000/health
-
-# Database health
-docker-compose exec mongodb mongosh --eval "db.runCommand('ping')"
-
-# Redis health
-docker-compose exec redis redis-cli ping
-```
-
-### **Monitoring Stack**
-
-- **Grafana**: Visualization and dashboards
-- **Prometheus**: Metrics collection
-- **Loki**: Log aggregation
-- **AlertManager**: Alert management
-
-### **Key Metrics**
-
-- **Response Time**: < 200ms average
-- **Success Rate**: > 99.9%
-- **Uptime**: > 99.9%
-- **Error Rate**: < 0.1%
-
-## 🚀 Deployment Scripts
-
-### **Automated Deployment**
-
-The `deploy.sh` script provides:
-
-```bash
-# Interactive deployment menu
-./deploy.sh
-
-# Direct deployment commands
-./deploy.sh dev      # Development
-./deploy.sh staging  # Staging
-./deploy.sh prod     # Production
-```
-
-### **Script Features**
-
-1. **Prerequisites Check**: Validates required tools
-2. **Environment Setup**: Creates and configures .env
-3. **Password Generation**: Creates secure passwords
-4. **Health Checks**: Validates service health
-5. **Backup/Restore**: Data management
-6. **Logging**: Comprehensive logging
-7. **Error Handling**: Graceful error recovery
-
-## 🔒 Security Configuration
-
-### **SSL/TLS Setup**
-
-```bash
-# Generate SSL certificates
-openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
-
-# Configure nginx
-server {
-    listen 443 ssl;
-    server_name omnify.yourdomain.com;
-    
-    ssl_certificate /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
-    
-    location / {
-        proxy_pass http://frontend:80;
-    }
-}
-```
-
-### **Firewall Configuration**
-
-```bash
-# UFW (Ubuntu)
-ufw allow 22/tcp    # SSH
-ufw allow 80/tcp    # HTTP
-ufw allow 443/tcp   # HTTPS
-ufw enable
-
-# iptables (CentOS/RHEL)
-iptables -A INPUT -p tcp --dport 22 -j ACCEPT
-iptables -A INPUT -p tcp --dport 80 -j ACCEPT
-iptables -A INPUT -p tcp --dport 443 -j ACCEPT
-```
-
-## 📈 Performance Optimization
-
-### **Frontend Optimization**
-
-```bash
-# Build optimized frontend
-cd frontend
-npm run build
-
-# Analyze bundle size
-npm run analyze
-
-# Enable compression
-gzip on;
-gzip_types text/plain text/css application/json application/javascript;
-```
-
-### **Backend Optimization**
-
-```python
-# Enable caching
-CACHE_TTL = 300  # 5 minutes
-
-# Database connection pooling
-DB_POOL_SIZE = 20
-DB_MAX_OVERFLOW = 30
-
-# Rate limiting
-RATE_LIMIT_PER_MINUTE = 100
-RATE_LIMIT_BURST = 200
-```
-
-## 🧪 Testing Strategy
-
-### **Test Types**
-
-1. **Unit Tests**: Component and function testing
-2. **Integration Tests**: API and service testing
-3. **E2E Tests**: Complete user journey testing
-4. **Performance Tests**: Load and stress testing
-
-### **Running Tests**
-
-```bash
-# Backend tests
-docker-compose exec backend python -m pytest tests/ -v
-
-# Frontend tests
-docker-compose exec frontend npm test
-
-# E2E tests
-docker-compose exec frontend npm run test:e2e
-
-# All tests
-./deploy.sh test
-```
-
-## 🔄 CI/CD Pipeline
-
-### **GitHub Actions**
-
-```yaml
-# .github/workflows/deploy.yml
-name: Deploy OmniFy
-
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Run tests
-        run: ./deploy.sh test
-
-  deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v3
-      - name: Deploy to production
-        run: ./deploy.sh prod
-```
-
-## 📚 Troubleshooting
-
-### **Common Issues**
-
-#### **Port Conflicts**
-```bash
-# Check port usage
-netstat -tulpn | grep :3000
-netstat -tulpn | grep :8000
-
-# Kill conflicting processes
-sudo kill -9 $(lsof -t -i:3000)
-sudo kill -9 $(lsof -t -i:8000)
-```
-
-#### **Database Connection Issues**
-```bash
-# Check MongoDB status
-docker-compose logs mongodb
-
-# Restart MongoDB
-docker-compose restart mongodb
-
-# Check connection
-docker-compose exec mongodb mongosh --eval "db.runCommand('ping')"
-```
-
-#### **API Key Issues**
-```bash
-# Validate API keys
-curl -H "Authorization: Bearer $OPENAI_API_KEY" \
-  https://api.openai.com/v1/models
-
-# Check environment variables
-docker-compose exec backend env | grep API_KEY
-```
-
-### **Log Analysis**
-
-```bash
-# View all logs
-docker-compose logs -f
-
-# View specific service logs
-docker-compose logs -f backend
-docker-compose logs -f frontend
-
-# Search logs
-docker-compose logs | grep ERROR
-docker-compose logs | grep WARNING
-```
-
-## 🎯 Next Steps
-
-### **Immediate Actions**
-
-1. **Deploy Development Environment**: Use Docker Compose for local testing
-2. **Configure API Keys**: Add your actual API keys to .env
-3. **Test Integrations**: Verify all platform integrations work
-4. **Customize UI**: Adapt the design system to your brand
-
-### **Production Readiness**
-
-1. **Security Audit**: Review all security configurations
-2. **Performance Testing**: Load test the application
-3. **Monitoring Setup**: Configure alerts and dashboards
-4. **Backup Strategy**: Implement data backup procedures
-5. **Documentation**: Create user and admin documentation
-
-### **Scaling Considerations**
-
-1. **Database Scaling**: Consider MongoDB Atlas for production
-2. **CDN Setup**: Use CloudFlare or AWS CloudFront
-3. **Load Balancing**: Implement horizontal scaling
-4. **Caching Strategy**: Add Redis clustering
-5. **Microservices**: Consider service decomposition
-
-## 📞 Support & Resources
-
-### **Documentation**
-- [API Documentation](http://localhost:8000/docs)
-- [UI Design System](docs/UI_DESIGN_SYSTEM.md)
-- [Architecture Overview](ARCHITECTURE_DIAGRAMS.md)
-
-### **Community**
-- GitHub Issues: Report bugs and request features
-- Discord: Real-time community support
-- Documentation: Comprehensive guides and tutorials
-
-### **Professional Support**
-- Enterprise Support: 24/7 support for production deployments
-- Custom Development: Tailored features and integrations
-- Training: Team training and onboarding
+# 🚀 OmniFy Production Deployment Guide
+
+## 📋 Overview
+
+This guide provides comprehensive instructions for deploying OmniFy Cloud Connect to production using Docker, Kubernetes, and Helm charts.
+
+## 🏗️ Architecture
+
+### Production Stack
+- **Backend**: FastAPI with Python 3.11
+- **Frontend**: React with Nginx
+- **Database**: MongoDB 7.0
+- **Cache**: Redis 7.2
+- **Queue**: Celery with Redis broker
+- **Monitoring**: Prometheus + Grafana
+- **Logging**: Loki + Promtail
+- **Ingress**: Nginx Ingress Controller
+- **SSL**: Let's Encrypt with cert-manager
+
+### Deployment Options
+1. **Docker Compose** (Development/Testing)
+2. **Kubernetes** (Production)
+3. **Helm Charts** (Production with templating)
 
 ---
 
-**Ready to deploy OmniFy Cloud Connect?** Start with the Docker Compose deployment for immediate results, then scale to cloud infrastructure as your needs grow. The professional UI and comprehensive integration system will provide a solid foundation for your marketing intelligence platform.
+## 🐳 Docker Compose Deployment
+
+### Prerequisites
+- Docker Engine 20.10+
+- Docker Compose 2.0+
+- 8GB RAM minimum
+- 50GB disk space
+
+### Quick Start
+```bash
+# Clone repository
+git clone https://github.com/omnifyproduct/omnify.git
+cd omnify
+
+# Copy environment template
+cp .env.example .env
+
+# Edit environment variables
+nano .env
+
+# Start services
+docker compose -f ops/docker/docker-compose.prod.yml up -d
+
+# Check status
+docker compose -f ops/docker/docker-compose.prod.yml ps
+
+# View logs
+docker compose -f ops/docker/docker-compose.prod.yml logs -f
+```
+
+### Environment Variables
+```bash
+# Database
+MONGO_ROOT_USERNAME=admin
+MONGO_ROOT_PASSWORD=omnify_secure_password_2024
+MONGO_DATABASE=omnify
+REDIS_PASSWORD=omnify_redis_secure_2024
+
+# Application
+SECRET_KEY=omnify_super_secret_key_change_in_production_2024
+JWT_SECRET=omnify_jwt_secret_change_in_production_2024
+
+# External APIs
+OPENAI_API_KEY=your_openai_api_key
+AGENTKIT_API_KEY=your_agentkit_api_key
+
+# Platform Integrations
+GOHIGHLEVEL_API_KEY=your_gohighlevel_api_key
+META_ACCESS_TOKEN=your_meta_access_token
+META_APP_ID=your_meta_app_id
+META_APP_SECRET=your_meta_app_secret
+GOOGLE_ADS_DEVELOPER_TOKEN=your_google_ads_developer_token
+GOOGLE_ADS_CLIENT_ID=your_google_ads_client_id
+GOOGLE_ADS_CLIENT_SECRET=your_google_ads_client_secret
+GOOGLE_ADS_REFRESH_TOKEN=your_google_ads_refresh_token
+GOOGLE_ADS_CUSTOMER_ID=your_google_ads_customer_id
+
+# Monitoring
+GRAFANA_PASSWORD=omnify_grafana_2024
+```
+
+---
+
+## ☸️ Kubernetes Deployment
+
+### Prerequisites
+- Kubernetes cluster 1.24+
+- kubectl configured
+- Helm 3.0+
+- cert-manager installed
+- nginx-ingress-controller installed
+
+### Namespace Setup
+```bash
+# Create namespace
+kubectl create namespace omnify
+
+# Create secrets
+kubectl apply -f ops/k8s/omnify-secrets-template.yaml
+
+# Deploy application
+kubectl apply -f ops/k8s/omnify-deployment.yaml
+
+# Check deployment status
+kubectl get pods -n omnify
+kubectl get services -n omnify
+kubectl get ingress -n omnify
+```
+
+### Secrets Management
+```bash
+# Create secrets from template
+cp ops/k8s/omnify-secrets-template.yaml ops/k8s/omnify-secrets.yaml
+
+# Edit secrets with actual values
+nano ops/k8s/omnify-secrets.yaml
+
+# Apply secrets
+kubectl apply -f ops/k8s/omnify-secrets.yaml
+```
+
+### Health Checks
+```bash
+# Check pod health
+kubectl get pods -n omnify -o wide
+
+# Check service endpoints
+kubectl get endpoints -n omnify
+
+# Check ingress status
+kubectl describe ingress omnify-ingress -n omnify
+
+# Test API health
+curl -f https://api.omnify.com/health
+```
+
+---
+
+## 🎯 Helm Chart Deployment
+
+### Prerequisites
+- Helm 3.0+
+- Kubernetes cluster
+- cert-manager installed
+- nginx-ingress-controller installed
+
+### Installation
+```bash
+# Add dependencies
+helm dependency update ops/helm/
+
+# Install with default values
+helm install omnify ops/helm/ --namespace omnify --create-namespace
+
+# Install with custom values
+helm install omnify ops/helm/ \
+  --namespace omnify \
+  --create-namespace \
+  --values ops/helm/values-production.yaml
+
+# Upgrade existing installation
+helm upgrade omnify ops/helm/ \
+  --namespace omnify \
+  --values ops/helm/values-production.yaml
+```
+
+### Custom Values
+```bash
+# Create production values
+cp ops/helm/values.yaml ops/helm/values-production.yaml
+
+# Edit production values
+nano ops/helm/values-production.yaml
+
+# Deploy with custom values
+helm install omnify ops/helm/ \
+  --namespace omnify \
+  --create-namespace \
+  --values ops/helm/values-production.yaml
+```
+
+### Helm Commands
+```bash
+# List releases
+helm list -n omnify
+
+# Get release status
+helm status omnify -n omnify
+
+# Get release values
+helm get values omnify -n omnify
+
+# Rollback release
+helm rollback omnify 1 -n omnify
+
+# Uninstall release
+helm uninstall omnify -n omnify
+```
+
+---
+
+## 🔧 Configuration
+
+### Backend Configuration
+```python
+# Environment variables
+ENVIRONMENT=production
+LOG_LEVEL=INFO
+DEBUG=false
+API_WORKERS=4
+
+# Database
+MONGODB_URL=mongodb://admin:password@mongodb:27017/omnify?authSource=admin
+REDIS_URL=redis://:password@redis:6379/0
+
+# Security
+SECRET_KEY=your_secret_key
+JWT_SECRET=your_jwt_secret
+
+# External APIs
+OPENAI_API_KEY=your_openai_key
+AGENTKIT_API_KEY=your_agentkit_key
+```
+
+### Frontend Configuration
+```javascript
+// Environment variables
+REACT_APP_API_URL=https://api.omnify.com
+REACT_APP_ENVIRONMENT=production
+REACT_APP_VERSION=1.0.0
+```
+
+### Monitoring Configuration
+```yaml
+# Prometheus configuration
+prometheus:
+  enabled: true
+  server:
+    persistentVolume:
+      enabled: true
+      size: 10Gi
+
+# Grafana configuration
+grafana:
+  enabled: true
+  adminPassword: your_password
+  persistence:
+    enabled: true
+    size: 5Gi
+```
+
+---
+
+## 📊 Monitoring & Observability
+
+### Health Endpoints
+- **Backend Health**: `https://api.omnify.com/health`
+- **Frontend Health**: `https://app.omnify.com/`
+- **Metrics**: `https://api.omnify.com/metrics`
+
+### Monitoring Stack
+- **Prometheus**: Metrics collection
+- **Grafana**: Dashboards and visualization
+- **Loki**: Log aggregation
+- **Promtail**: Log collection
+
+### Access Monitoring
+```bash
+# Grafana
+kubectl port-forward -n omnify svc/omnify-grafana 3000:3000
+# Access: http://localhost:3000
+
+# Prometheus
+kubectl port-forward -n omnify svc/omnify-prometheus 9090:9090
+# Access: http://localhost:9090
+```
+
+---
+
+## 🔒 Security
+
+### Security Best Practices
+1. **Secrets Management**: Use Kubernetes secrets
+2. **Network Policies**: Restrict pod communication
+3. **Pod Security**: Run as non-root user
+4. **Image Security**: Use specific image tags
+5. **SSL/TLS**: Enable HTTPS with Let's Encrypt
+
+### SSL Certificate Setup
+```bash
+# Install cert-manager
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.0/cert-manager.yaml
+
+# Create ClusterIssuer
+kubectl apply -f - <<EOF
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@omnify.com
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+EOF
+```
+
+---
+
+## 🚀 CI/CD Pipeline
+
+### GitHub Actions
+The CI/CD pipeline includes:
+- **Code Quality**: Linting, formatting, type checking
+- **Testing**: Unit tests, integration tests, security scans
+- **Building**: Docker image creation
+- **Deployment**: Automated deployment to staging/production
+
+### Pipeline Stages
+1. **Lint & Format**: Code quality checks
+2. **Backend Tests**: Python tests with coverage
+3. **Frontend Tests**: React tests and build
+4. **Security Scan**: Vulnerability scanning
+5. **Build & Push**: Docker image creation
+6. **Deploy**: Kubernetes deployment
+7. **Post-Deploy Tests**: Smoke tests
+
+### Manual Deployment
+```bash
+# Trigger deployment
+gh workflow run ci-cd.yml
+
+# Check workflow status
+gh run list
+
+# View workflow logs
+gh run view <run-id>
+```
+
+---
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+#### Pod Not Starting
+```bash
+# Check pod status
+kubectl describe pod <pod-name> -n omnify
+
+# Check pod logs
+kubectl logs <pod-name> -n omnify
+
+# Check events
+kubectl get events -n omnify --sort-by='.lastTimestamp'
+```
+
+#### Service Not Accessible
+```bash
+# Check service endpoints
+kubectl get endpoints -n omnify
+
+# Check ingress status
+kubectl describe ingress omnify-ingress -n omnify
+
+# Test service connectivity
+kubectl run test-pod --image=busybox -it --rm -- nslookup omnify-backend-service.omnify.svc.cluster.local
+```
+
+#### Database Connection Issues
+```bash
+# Check MongoDB status
+kubectl exec -it <mongodb-pod> -n omnify -- mongosh --eval "db.adminCommand('ping')"
+
+# Check Redis status
+kubectl exec -it <redis-pod> -n omnify -- redis-cli ping
+```
+
+### Log Analysis
+```bash
+# Backend logs
+kubectl logs -f deployment/omnify-backend -n omnify
+
+# Frontend logs
+kubectl logs -f deployment/omnify-frontend -n omnify
+
+# Celery logs
+kubectl logs -f deployment/omnify-celery-worker -n omnify
+```
+
+---
+
+## 📈 Scaling
+
+### Horizontal Scaling
+```bash
+# Scale backend
+kubectl scale deployment omnify-backend --replicas=5 -n omnify
+
+# Scale frontend
+kubectl scale deployment omnify-frontend --replicas=3 -n omnify
+
+# Scale celery workers
+kubectl scale deployment omnify-celery-worker --replicas=4 -n omnify
+```
+
+### Vertical Scaling
+```yaml
+# Update resource limits in values.yaml
+resources:
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+```
+
+### Auto-scaling
+```bash
+# Check HPA status
+kubectl get hpa -n omnify
+
+# Update HPA
+kubectl patch hpa omnify-backend-hpa -n omnify -p '{"spec":{"maxReplicas":20}}'
+```
+
+---
+
+## 🔄 Backup & Recovery
+
+### Database Backup
+```bash
+# MongoDB backup
+kubectl exec -it <mongodb-pod> -n omnify -- mongodump --out /backup/$(date +%Y%m%d)
+
+# Redis backup
+kubectl exec -it <redis-pod> -n omnify -- redis-cli BGSAVE
+```
+
+### Application Backup
+```bash
+# Backup persistent volumes
+kubectl get pv -n omnify
+
+# Create backup job
+kubectl apply -f - <<EOF
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: backup-job
+  namespace: omnify
+spec:
+  template:
+    spec:
+      containers:
+      - name: backup
+        image: busybox
+        command: ["sh", "-c", "tar -czf /backup/app-backup.tar.gz /app/data"]
+        volumeMounts:
+        - name: app-data
+          mountPath: /app/data
+        - name: backup-volume
+          mountPath: /backup
+      volumes:
+      - name: app-data
+        persistentVolumeClaim:
+          claimName: omnify-data-pvc
+      - name: backup-volume
+        persistentVolumeClaim:
+          claimName: backup-pvc
+      restartPolicy: Never
+EOF
+```
+
+---
+
+## 📞 Support
+
+### Getting Help
+- **Documentation**: Check this guide and inline comments
+- **Issues**: Create GitHub issues for bugs
+- **Discussions**: Use GitHub discussions for questions
+- **Email**: Contact team@omnify.com
+
+### Emergency Contacts
+- **On-call**: +1-XXX-XXX-XXXX
+- **Email**: emergency@omnify.com
+- **Slack**: #omnify-alerts
+
+---
+
+## 🎉 Success!
+
+If you've followed this guide, you should now have:
+- ✅ OmniFy running in production
+- ✅ Monitoring and logging configured
+- ✅ SSL certificates installed
+- ✅ Auto-scaling enabled
+- ✅ Backup procedures in place
+
+**Welcome to OmniFy Cloud Connect!** 🚀
