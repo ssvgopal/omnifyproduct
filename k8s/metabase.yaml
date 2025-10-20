@@ -1,0 +1,228 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metabase
+  namespace: omnify
+  labels:
+    app: metabase
+    component: bi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: metabase
+  template:
+    metadata:
+      labels:
+        app: metabase
+        component: bi
+    spec:
+      containers:
+      - name: metabase
+        image: metabase/metabase:latest
+        ports:
+        - containerPort: 3000
+          name: http
+        env:
+        - name: MB_DB_TYPE
+          value: "postgres"
+        - name: MB_DB_DBNAME
+          value: "metabase"
+        - name: MB_DB_PORT
+          value: "5432"
+        - name: MB_DB_USER
+          value: "metabase"
+        - name: MB_DB_PASS
+          valueFrom:
+            secretKeyRef:
+              name: metabase-secrets
+              key: db-password
+        - name: MB_DB_HOST
+          value: "metabase-postgres"
+        - name: MB_ENCRYPTION_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: metabase-secrets
+              key: encryption-key
+        - name: MB_SITE_URL
+          value: "http://metabase.omnify.local"
+        - name: MB_SITE_NAME
+          value: "OmniFy Business Intelligence"
+        - name: MB_EMBEDDING_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: metabase-secrets
+              key: embedding-secret
+        - name: MB_JETTY_HOST
+          value: "0.0.0.0"
+        - name: MB_JETTY_PORT
+          value: "3000"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        volumeMounts:
+        - name: metabase-data
+          mountPath: /metabase-data
+      volumes:
+      - name: metabase-data
+        emptyDir: {}
+      initContainers:
+      - name: wait-for-postgres
+        image: postgres:13
+        command: ['sh', '-c', 'until pg_isready -h metabase-postgres -p 5432; do sleep 1; done']
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metabase
+  namespace: omnify
+  labels:
+    app: metabase
+spec:
+  selector:
+    app: metabase
+  ports:
+  - name: http
+    port: 3000
+    targetPort: 3000
+  type: ClusterIP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: metabase-ingress
+  namespace: omnify
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  rules:
+  - host: metabase.omnify.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: metabase
+            port:
+              number: 3000
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metabase-postgres
+  namespace: omnify
+  labels:
+    app: metabase-postgres
+    component: database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: metabase-postgres
+  template:
+    metadata:
+      labels:
+        app: metabase-postgres
+        component: database
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:13
+        ports:
+        - containerPort: 5432
+          name: postgres
+        env:
+        - name: POSTGRES_DB
+          value: "metabase"
+        - name: POSTGRES_USER
+          value: "metabase"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: metabase-secrets
+              key: db-password
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - metabase
+            - -h
+            - localhost
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - metabase
+            - -h
+            - localhost
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: postgres-data
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metabase-postgres
+  namespace: omnify
+  labels:
+    app: metabase-postgres
+spec:
+  selector:
+    app: metabase-postgres
+  ports:
+  - name: postgres
+    port: 5432
+    targetPort: 5432
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: metabase-secrets
+  namespace: omnify
+type: Opaque
+stringData:
+  db-password: "metabase_password_123"
+  encryption-key: "metabase_encryption_key_12345678901234567890123456789012"
+  embedding-secret: "metabase_embedding_secret_12345678901234567890123456789012"

@@ -19,6 +19,7 @@ from api.kong_routes import router as kong_router
 from api.temporal_routes import router as temporal_router
 from api.airbyte_routes import router as airbyte_router
 from api.kafka_routes import router as kafka_router
+from api.metabase_routes import router as metabase_router
 
 # Import database schema manager
 from database.mongodb_schema import MongoDBSchema
@@ -39,6 +40,7 @@ from services.kong_gateway import kong_client # Import Kong gateway client
 from services.temporal_orchestration import temporal_service # Import Temporal orchestration service
 from services.airbyte_etl import airbyte_service # Import Airbyte ETL service
 from services.kafka_eventing import kafka_service # Import Kafka eventing service
+from services.metabase_bi import metabase_service # Import Metabase BI service
 
 # Configure logging
 logging.basicConfig(
@@ -175,19 +177,18 @@ async def lifespan(app: FastAPI):
         "active_syncs": airbyte_health.get("active_syncs", 0)
     })
 
-    # Initialize Kafka Event Streaming Service
-    kafka_connected = await kafka_service.connect()
-    if kafka_connected:
-        topics_created = await kafka_service.create_topics()
-        kafka_health = await kafka_service.health_check()
-        logger.info("✅ Kafka Event Streaming Service initialized", extra={
-            "kafka_enabled": kafka_health.get("kafka_enabled", False),
-            "producer_connected": kafka_health.get("producer_connected", False),
-            "active_consumers": kafka_health.get("active_consumers", 0),
-            "topics_created": topics_created
+    # Initialize Metabase BI Service
+    metabase_connected = await metabase_service.authenticate()
+    if metabase_connected:
+        metabase_health = await metabase_service.health_check()
+        logger.info("✅ Metabase BI Service initialized", extra={
+            "metabase_enabled": metabase_health.get("metabase_enabled", False),
+            "metabase_status": metabase_health.get("metabase_status", "unhealthy"),
+            "authenticated": metabase_health.get("authenticated", False),
+            "site_url": metabase_health.get("site_url", "")
         })
     else:
-        logger.warning("⚠️ Kafka connection failed - event streaming will be disabled")
+        logger.warning("⚠️ Metabase authentication failed - BI dashboards will be disabled")
 
     logger.info("✅ Omnify Cloud Connect started successfully with AgentKit Hybrid")
 
@@ -198,13 +199,14 @@ async def lifespan(app: FastAPI):
     if real_agentkit_adapter:
         await real_agentkit_adapter.close()
     
-    # Close OIDC, OPA, Kong, Temporal, Airbyte, and Kafka services
+    # Close OIDC, OPA, Kong, Temporal, Airbyte, Kafka, and Metabase services
     await oidc_auth_service.close()
     await opa_client.close()
     await kong_client.close()
     await temporal_service.close()
     await airbyte_service.close()
     await kafka_service.close()
+    await metabase_service.close()
     
     client.close()
     logger.info("✅ Shutdown complete")
@@ -329,6 +331,7 @@ app.include_router(kong_router)
 app.include_router(temporal_router)
 app.include_router(airbyte_router)
 app.include_router(kafka_router)
+app.include_router(metabase_router)
 
 
 # ========== CORE API ENDPOINTS ==========
@@ -443,8 +446,16 @@ async def health_check():
         logger.error(f"Kafka health check failed: {str(e)}")
         kafka_status = "unhealthy"
     
+    # Check Metabase health
+    try:
+        metabase_health = await metabase_service.health_check()
+        metabase_status = metabase_health.get("status", "unhealthy")
+    except Exception as e:
+        logger.error(f"Metabase health check failed: {str(e)}")
+        metabase_status = "unhealthy"
+    
     overall_status = "healthy"
-    if db_status != "healthy" or oidc_status != "healthy" or opa_status != "healthy" or kong_status != "healthy" or temporal_status != "healthy" or airbyte_status != "healthy" or kafka_status != "healthy":
+    if db_status != "healthy" or oidc_status != "healthy" or opa_status != "healthy" or kong_status != "healthy" or temporal_status != "healthy" or airbyte_status != "healthy" or kafka_status != "healthy" or metabase_status != "healthy":
         overall_status = "degraded"
     
     return {
@@ -457,6 +468,7 @@ async def health_check():
             "temporal_orchestration": temporal_status,
             "airbyte_etl": airbyte_status,
             "kafka_eventing": kafka_status,
+            "metabase_bi": metabase_status,
             "agentkit": "operational",
             "api": "operational"
         },
