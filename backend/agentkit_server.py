@@ -21,6 +21,7 @@ from api.airbyte_routes import router as airbyte_router
 from api.kafka_routes import router as kafka_router
 from api.metabase_routes import router as metabase_router
 from api.proactive_intelligence_routes import router as proactive_intelligence_router
+from api.onboarding_routes import router as onboarding_router
 
 # Import database schema manager
 from database.mongodb_schema import MongoDBSchema
@@ -43,6 +44,7 @@ from services.airbyte_etl import airbyte_service # Import Airbyte ETL service
 from services.kafka_eventing import kafka_service # Import Kafka eventing service
 from services.metabase_bi import metabase_service # Import Metabase BI service
 from services.proactive_intelligence_engine import get_proactive_intelligence_engine # Import Proactive Intelligence Engine
+from services.magical_onboarding_wizard import get_onboarding_wizard # Import Magical Onboarding Wizard
 
 # Configure logging
 logging.basicConfig(
@@ -205,6 +207,14 @@ async def lifespan(app: FastAPI):
         }
     })
 
+    # Initialize Magical Onboarding Wizard
+    onboarding_wizard = get_onboarding_wizard(db)
+    logger.info("✅ Magical Onboarding Wizard initialized", extra={
+        "total_steps": len(onboarding_wizard.step_configs),
+        "total_achievements": len(onboarding_wizard.achievements),
+        "role_experiences": len(onboarding_wizard.role_experiences)
+    })
+
     logger.info("✅ Omnify Cloud Connect started successfully with AgentKit Hybrid")
 
     yield
@@ -348,6 +358,7 @@ app.include_router(airbyte_router)
 app.include_router(kafka_router)
 app.include_router(metabase_router)
 app.include_router(proactive_intelligence_router)
+app.include_router(onboarding_router)
 
 
 # ========== CORE API ENDPOINTS ==========
