@@ -17,6 +17,7 @@ from api.agentkit_routes import router as agentkit_router
 from api.auth_routes import router as auth_router
 from api.kong_routes import router as kong_router
 from api.temporal_routes import router as temporal_router
+from api.airbyte_routes import router as airbyte_router
 
 # Import database schema manager
 from database.mongodb_schema import MongoDBSchema
@@ -35,6 +36,7 @@ from services.oidc_auth import oidc_auth_service # Import OIDC auth service
 from services.opa_policy_engine import opa_client # Import OPA policy engine
 from services.kong_gateway import kong_client # Import Kong gateway client
 from services.temporal_orchestration import temporal_service # Import Temporal orchestration service
+from services.airbyte_etl import airbyte_service # Import Airbyte ETL service
 
 # Configure logging
 logging.basicConfig(
@@ -162,6 +164,15 @@ async def lifespan(app: FastAPI):
     else:
         logger.warning("⚠️ Temporal connection failed - workflows will be disabled")
 
+    # Initialize Airbyte ETL/ELT Service
+    airbyte_health = await airbyte_service.health_check()
+    logger.info("✅ Airbyte ETL/ELT Service initialized", extra={
+        "airbyte_enabled": airbyte_health.get("airbyte_enabled", False),
+        "airbyte_status": airbyte_health.get("airbyte_status", "disabled"),
+        "active_connectors": airbyte_health.get("active_connectors", 0),
+        "active_syncs": airbyte_health.get("active_syncs", 0)
+    })
+
     logger.info("✅ Omnify Cloud Connect started successfully with AgentKit Hybrid")
 
     yield
@@ -171,11 +182,12 @@ async def lifespan(app: FastAPI):
     if real_agentkit_adapter:
         await real_agentkit_adapter.close()
     
-    # Close OIDC, OPA, Kong, and Temporal services
+    # Close OIDC, OPA, Kong, Temporal, and Airbyte services
     await oidc_auth_service.close()
     await opa_client.close()
     await kong_client.close()
     await temporal_service.close()
+    await airbyte_service.close()
     
     client.close()
     logger.info("✅ Shutdown complete")
@@ -298,6 +310,7 @@ app.include_router(auth_router)
 app.include_router(agentkit_router)
 app.include_router(kong_router)
 app.include_router(temporal_router)
+app.include_router(airbyte_router)
 
 
 # ========== CORE API ENDPOINTS ==========
@@ -396,8 +409,16 @@ async def health_check():
         logger.error(f"Temporal health check failed: {str(e)}")
         temporal_status = "unhealthy"
     
+    # Check Airbyte service
+    try:
+        airbyte_health = await airbyte_service.health_check()
+        airbyte_status = airbyte_health.get("status", "unhealthy")
+    except Exception as e:
+        logger.error(f"Airbyte health check failed: {str(e)}")
+        airbyte_status = "unhealthy"
+    
     overall_status = "healthy"
-    if db_status != "healthy" or oidc_status != "healthy" or opa_status != "healthy" or kong_status != "healthy" or temporal_status != "healthy":
+    if db_status != "healthy" or oidc_status != "healthy" or opa_status != "healthy" or kong_status != "healthy" or temporal_status != "healthy" or airbyte_status != "healthy":
         overall_status = "degraded"
     
     return {
@@ -408,6 +429,7 @@ async def health_check():
             "opa_policy": opa_status,
             "kong_gateway": kong_status,
             "temporal_orchestration": temporal_status,
+            "airbyte_etl": airbyte_status,
             "agentkit": "operational",
             "api": "operational"
         },
