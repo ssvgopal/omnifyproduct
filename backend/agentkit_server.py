@@ -20,6 +20,7 @@ from api.temporal_routes import router as temporal_router
 from api.airbyte_routes import router as airbyte_router
 from api.kafka_routes import router as kafka_router
 from api.metabase_routes import router as metabase_router
+from api.proactive_intelligence_routes import router as proactive_intelligence_router
 
 # Import database schema manager
 from database.mongodb_schema import MongoDBSchema
@@ -41,6 +42,7 @@ from services.temporal_orchestration import temporal_service # Import Temporal o
 from services.airbyte_etl import airbyte_service # Import Airbyte ETL service
 from services.kafka_eventing import kafka_service # Import Kafka eventing service
 from services.metabase_bi import metabase_service # Import Metabase BI service
+from services.proactive_intelligence_engine import get_proactive_intelligence_engine # Import Proactive Intelligence Engine
 
 # Configure logging
 logging.basicConfig(
@@ -190,6 +192,19 @@ async def lifespan(app: FastAPI):
     else:
         logger.warning("⚠️ Metabase authentication failed - BI dashboards will be disabled")
 
+    # Initialize Proactive Intelligence Engine
+    proactive_engine = get_proactive_intelligence_engine(db)
+    await proactive_engine.initialize_models()
+    logger.info("✅ Proactive Intelligence Engine initialized", extra={
+        "client_profiles_loaded": len(proactive_engine.client_profiles),
+        "models_trained": {
+            "fatigue_predictor": proactive_engine.fatigue_predictor is not None,
+            "ltv_predictor": proactive_engine.ltv_predictor is not None,
+            "churn_predictor": proactive_engine.churn_predictor is not None,
+            "anomaly_detector": proactive_engine.anomaly_detector is not None
+        }
+    })
+
     logger.info("✅ Omnify Cloud Connect started successfully with AgentKit Hybrid")
 
     yield
@@ -332,6 +347,7 @@ app.include_router(temporal_router)
 app.include_router(airbyte_router)
 app.include_router(kafka_router)
 app.include_router(metabase_router)
+app.include_router(proactive_intelligence_router)
 
 
 # ========== CORE API ENDPOINTS ==========
