@@ -1,0 +1,332 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kong-config
+  namespace: omnify-oss
+data:
+  KONG_DATABASE: "off"
+  KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
+  KONG_PROXY_ACCESS_LOG: /dev/stdout
+  KONG_ADMIN_ACCESS_LOG: /dev/stdout
+  KONG_PROXY_ERROR_LOG: /dev/stderr
+  KONG_ADMIN_ERROR_LOG: /dev/stderr
+  KONG_ADMIN_LISTEN: 0.0.0.0:8001
+  KONG_PROXY_LISTEN: 0.0.0.0:8000
+  KONG_ADMIN_GUI_LISTEN: 0.0.0.0:8002
+  KONG_ADMIN_GUI_URL: http://kong-admin.omnify.local:8002
+  KONG_HOSTNAME: kong.omnify.local
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kong-declarative-config
+  namespace: omnify-oss
+data:
+  kong.yml: |
+    _format_version: "3.0"
+    
+    services:
+      - name: omnify-api
+        url: http://omnify-api:8000
+        connect_timeout: 60000
+        write_timeout: 60000
+        read_timeout: 60000
+        
+    routes:
+      - name: omnify-api-all
+        service: omnify-api
+        protocols: ["http", "https"]
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
+        paths: ["/api/"]
+        strip_path: true
+        
+      - name: omnify-auth
+        service: omnify-api
+        protocols: ["http", "https"]
+        methods: ["GET", "POST", "PUT", "DELETE"]
+        paths: ["/api/auth/"]
+        strip_path: true
+        
+      - name: omnify-agentkit
+        service: omnify-api
+        protocols: ["http", "https"]
+        methods: ["GET", "POST", "PUT", "DELETE"]
+        paths: ["/api/agentkit/"]
+        strip_path: true
+        
+      - name: omnify-eyes
+        service: omnify-api
+        protocols: ["http", "https"]
+        methods: ["GET", "POST", "PUT", "DELETE"]
+        paths: ["/api/eyes/"]
+        strip_path: true
+        
+      - name: omnify-health
+        service: omnify-api
+        protocols: ["http", "https"]
+        methods: ["GET"]
+        paths: ["/health", "/api/info"]
+        strip_path: true
+        
+    plugins:
+      - name: rate-limiting
+        service: omnify-api
+        config:
+          minute: 1000
+          hour: 60000
+          day: 1440000
+          policy: local
+          fault_tolerant: true
+          hide_client_headers: false
+          
+      - name: request-size-limiting
+        service: omnify-api
+        config:
+          allowed_payload_size: 10485760  # 10MB
+          size_unit: bytes
+          require_content_length: true
+          
+      - name: cors
+        service: omnify-api
+        config:
+          origins: ["*"]
+          methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+          headers: ["Accept", "Accept-Version", "Content-Length", "Content-MD5", "Content-Type", "Date", "X-Auth-Token", "Authorization"]
+          exposed_headers: ["X-Auth-Token"]
+          credentials: true
+          max_age: 3600
+          preflight_continue: false
+          
+      - name: prometheus
+        service: omnify-api
+        config:
+          per_consumer: true
+          status_code_metrics: true
+          latency_metrics: true
+          bandwidth_metrics: true
+          upstream_health_metrics: true
+          
+      - name: oidc
+        service: omnify-api
+        config:
+          client_id: omnify-api
+          client_secret: ${KEYCLOAK_CLIENT_SECRET}
+          discovery: http://keycloak:8080/realms/omnify/.well-known/openid_configuration
+          introspection_endpoint: http://keycloak:8080/realms/omnify/protocol/openid-connect/token/introspect
+          bearer_only: "yes"
+          realm: omnify
+          scope: "openid email profile"
+          ssl_verify: false
+          
+    consumers:
+      - username: free-tier
+        custom_id: free-tier
+        tags: ["plan:free", "tier:basic"]
+        
+      - username: pro-tier
+        custom_id: pro-tier
+        tags: ["plan:pro", "tier:professional"]
+        
+      - username: enterprise-tier
+        custom_id: enterprise-tier
+        tags: ["plan:enterprise", "tier:enterprise"]
+        
+    acls:
+      - consumer: free-tier
+        group: free
+        
+      - consumer: pro-tier
+        group: pro
+        
+      - consumer: enterprise-tier
+        group: enterprise
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kong
+  namespace: omnify-oss
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: kong
+  template:
+    metadata:
+      labels:
+        app: kong
+    spec:
+      containers:
+      - name: kong
+        image: kong:3.4
+        env:
+        - name: KONG_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: kong-config
+              key: KONG_DATABASE
+        - name: KONG_DECLARATIVE_CONFIG
+          valueFrom:
+            configMapKeyRef:
+              name: kong-config
+              key: KONG_DECLARATIVE_CONFIG
+        - name: KONG_PROXY_ACCESS_LOG
+          valueFrom:
+            configMapKeyRef:
+              name: kong-config
+              key: KONG_PROXY_ACCESS_LOG
+        - name: KONG_ADMIN_ACCESS_LOG
+          valueFrom:
+            configMapKeyRef:
+              name: kong-config
+              key: KONG_ADMIN_ACCESS_LOG
+        - name: KONG_PROXY_ERROR_LOG
+          valueFrom:
+            configMapKeyRef:
+              name: kong-config
+              key: KONG_PROXY_ERROR_LOG
+        - name: KONG_ADMIN_ERROR_LOG
+          valueFrom:
+            configMapKeyRef:
+              name: kong-config
+              key: KONG_ADMIN_ERROR_LOG
+        - name: KONG_ADMIN_LISTEN
+          valueFrom:
+            configMapKeyRef:
+              name: kong-config
+              key: KONG_ADMIN_LISTEN
+        - name: KONG_PROXY_LISTEN
+          valueFrom:
+            configMapKeyRef:
+              name: kong-config
+              key: KONG_PROXY_LISTEN
+        - name: KONG_ADMIN_GUI_LISTEN
+          valueFrom:
+            configMapKeyRef:
+              name: kong-config
+              key: KONG_ADMIN_GUI_LISTEN
+        - name: KONG_ADMIN_GUI_URL
+          valueFrom:
+            configMapKeyRef:
+              name: kong-config
+              key: KONG_ADMIN_GUI_URL
+        - name: KONG_HOSTNAME
+          valueFrom:
+            configMapKeyRef:
+              name: kong-config
+              key: KONG_HOSTNAME
+        - name: KEYCLOAK_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: keycloak-secret
+              key: KEYCLOAK_CLIENT_SECRET
+        ports:
+        - containerPort: 8000
+          name: proxy
+        - containerPort: 8001
+          name: admin
+        - containerPort: 8002
+          name: admin-gui
+        volumeMounts:
+        - name: kong-declarative-config
+          mountPath: /kong/declarative
+        readinessProbe:
+          httpGet:
+            path: /status
+            port: 8001
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /status
+            port: 8001
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: kong-declarative-config
+        configMap:
+          name: kong-declarative-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong
+  namespace: omnify-oss
+spec:
+  selector:
+    app: kong
+  ports:
+  - name: proxy
+    port: 8000
+    targetPort: 8000
+  - name: admin
+    port: 8001
+    targetPort: 8001
+  - name: admin-gui
+    port: 8002
+    targetPort: 8002
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong-admin
+  namespace: omnify-oss
+spec:
+  selector:
+    app: kong
+  ports:
+  - name: admin
+    port: 8001
+    targetPort: 8001
+  - name: admin-gui
+    port: 8002
+    targetPort: 8002
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kong-ingress
+  namespace: omnify-oss
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  rules:
+  - host: kong.omnify.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kong
+            port:
+              number: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kong-admin-ingress
+  namespace: omnify-oss
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  rules:
+  - host: kong-admin.omnify.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kong-admin
+            port:
+              number: 8002

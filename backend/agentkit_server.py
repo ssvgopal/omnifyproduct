@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 # Import routes
 from api.agentkit_routes import router as agentkit_router
 from api.auth_routes import router as auth_router
+from api.kong_routes import router as kong_router
 
 # Import database schema manager
 from database.mongodb_schema import MongoDBSchema
@@ -31,6 +32,7 @@ from services.cost_guardrails import cost_guardrails
 from services.idempotency_middleware import idempotency_middleware
 from services.oidc_auth import oidc_auth_service # Import OIDC auth service
 from services.opa_policy_engine import opa_client # Import OPA policy engine
+from services.kong_gateway import kong_client # Import Kong gateway client
 
 # Configure logging
 logging.basicConfig(
@@ -137,6 +139,14 @@ async def lifespan(app: FastAPI):
         "fallback_policies": opa_health.get("fallback_policies", 0)
     })
 
+    # Initialize Kong API Gateway
+    kong_health = await kong_client.health_check()
+    logger.info("✅ Kong API Gateway initialized", extra={
+        "kong_enabled": kong_health.get("kong_enabled", False),
+        "admin_api": kong_health.get("admin_api", "disabled"),
+        "gateway": kong_health.get("gateway", "disabled")
+    })
+
     logger.info("✅ Omnify Cloud Connect started successfully with AgentKit Hybrid")
 
     yield
@@ -149,6 +159,7 @@ async def lifespan(app: FastAPI):
     # Close OIDC and OPA services
     await oidc_auth_service.close()
     await opa_client.close()
+    await kong_client.close()
     
     client.close()
     logger.info("✅ Shutdown complete")
@@ -269,6 +280,7 @@ def get_db():
 # Include routers
 app.include_router(auth_router)
 app.include_router(agentkit_router)
+app.include_router(kong_router)
 
 
 # ========== CORE API ENDPOINTS ==========
@@ -351,8 +363,16 @@ async def health_check():
         logger.error(f"OPA health check failed: {str(e)}")
         opa_status = "unhealthy"
     
+    # Check Kong service
+    try:
+        kong_health = await kong_client.health_check()
+        kong_status = kong_health.get("status", "unhealthy")
+    except Exception as e:
+        logger.error(f"Kong health check failed: {str(e)}")
+        kong_status = "unhealthy"
+    
     overall_status = "healthy"
-    if db_status != "healthy" or oidc_status != "healthy" or opa_status != "healthy":
+    if db_status != "healthy" or oidc_status != "healthy" or opa_status != "healthy" or kong_status != "healthy":
         overall_status = "degraded"
     
     return {
@@ -361,6 +381,7 @@ async def health_check():
             "database": db_status,
             "oidc_auth": oidc_status,
             "opa_policy": opa_status,
+            "kong_gateway": kong_status,
             "agentkit": "operational",
             "api": "operational"
         },
