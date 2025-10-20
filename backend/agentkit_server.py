@@ -25,6 +25,7 @@ from api.onboarding_routes import router as onboarding_router
 from api.instant_value_routes import router as instant_value_router
 from api.orchestration_routes import router as orchestration_router
 from api.predictive_routes import router as predictive_routes
+from api.adaptive_learning_routes import router as adaptive_learning_router
 
 # Import database schema manager
 from database.mongodb_schema import MongoDBSchema
@@ -51,6 +52,7 @@ from services.magical_onboarding_wizard import get_onboarding_wizard # Import Ma
 from services.instant_value_delivery_system import get_instant_value_system # Import Instant Value Delivery System
 from services.customer_orchestration_dashboard import get_orchestration_dashboard # Import Customer Orchestration Dashboard
 from services.predictive_intelligence_dashboard import get_predictive_intelligence_dashboard # Import Predictive Intelligence Dashboard
+from services.adaptive_client_learning_system import get_adaptive_learning_system # Import Adaptive Client Learning System
 
 # Configure logging
 logging.basicConfig(
@@ -245,6 +247,14 @@ async def lifespan(app: FastAPI):
         "opportunity_types": len(predictive_dashboard.opportunity_types)
     })
 
+    # Initialize Adaptive Client Learning System
+    adaptive_learning_system = await get_adaptive_learning_system(db)
+    logger.info("✅ Adaptive Client Learning System initialized", extra={
+        "loaded_profiles": len(adaptive_learning_system.client_profiles),
+        "tracking_clients": len(adaptive_learning_system.behavior_tracking),
+        "personality_types": len(adaptive_learning_system.personality_weights)
+    })
+
     logger.info("✅ Omnify Cloud Connect started successfully with AgentKit Hybrid")
 
     yield
@@ -392,6 +402,7 @@ app.include_router(onboarding_router)
 app.include_router(instant_value_router)
 app.include_router(orchestration_router)
 app.include_router(predictive_routes)
+app.include_router(adaptive_learning_router)
 
 
 # ========== CORE API ENDPOINTS ==========

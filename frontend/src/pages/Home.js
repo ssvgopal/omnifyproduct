@@ -8,6 +8,7 @@ import MagicalOnboardingWizard from '@/components/Onboarding/MagicalOnboardingWi
 import InstantValueDeliveryDashboard from '@/components/Dashboard/InstantValueDeliveryDashboard';
 import CustomerOrchestrationDashboard from '@/components/Dashboard/CustomerOrchestrationDashboard';
 import PredictiveIntelligenceDashboard from '@/components/Dashboard/PredictiveIntelligenceDashboard';
+import AdaptiveClientLearningDashboard from '@/components/Dashboard/AdaptiveClientLearningDashboard';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -81,6 +82,7 @@ const Home = () => {
             <TabsTrigger value="instant-value" data-testid="tab-instant-value">⚡ Instant Value</TabsTrigger>
             <TabsTrigger value="orchestration" data-testid="tab-orchestration">🎭 Orchestration</TabsTrigger>
             <TabsTrigger value="predictive-intelligence" data-testid="tab-predictive-intelligence">🔮 Predictive AI</TabsTrigger>
+            <TabsTrigger value="adaptive-learning" data-testid="tab-adaptive-learning">🧠 Adaptive Learning</TabsTrigger>
             <TabsTrigger value="integrations" data-testid="tab-integrations">Integrations</TabsTrigger>
           </TabsList>
 
@@ -167,6 +169,10 @@ const Home = () => {
 
           <TabsContent value="predictive-intelligence">
             <PredictiveIntelligenceDashboard />
+          </TabsContent>
+
+          <TabsContent value="adaptive-learning">
+            <AdaptiveClientLearningDashboard />
           </TabsContent>
 
           <TabsContent value="integrations">
