@@ -900,22 +900,30 @@ class PredictiveIntelligenceEngine:
         return predictions
 
     async def _calculate_compound_intelligence(self):
-        """Calculate compound intelligence score based on learning history"""
+        """Calculate compound intelligence score based on learning history and model metrics"""
         try:
-            if not self.learning_history:
+            # Calculate base score from model metrics
+            accuracy_scores = []
+            for m in self.model_metrics.values():
+                if m.get("accuracy", 0) > 0:
+                    accuracy_scores.append(m["accuracy"])
+                elif m.get("precision", 0) > 0:  # For anomaly detection
+                    accuracy_scores.append(m["precision"])
+            
+            if not accuracy_scores:
                 self.compound_intelligence_score = 0.0
                 return
-
-            # Calculate improvement over time (simplified)
-            recent_accuracy = np.mean([
-                m["accuracy"] for m in self.model_metrics.values()
-                if m.get("accuracy", 0) > 0
-            ])
-
-            learning_samples = len(self.learning_history)
-            time_factor = min(learning_samples / 1000, 1.0)  # Learning curve
-
-            self.compound_intelligence_score = round(recent_accuracy * time_factor * 100, 2)
+            
+            base_score = np.mean(accuracy_scores)
+            
+            # Apply learning factor if we have history
+            if self.learning_history:
+                learning_samples = len(self.learning_history)
+                time_factor = min(learning_samples / 1000, 1.0)  # Learning curve
+                self.compound_intelligence_score = round(base_score * time_factor, 4)
+            else:
+                # Without learning history, use base model performance
+                self.compound_intelligence_score = round(base_score, 4)
 
         except Exception as e:
             logger.warning("Failed to calculate compound intelligence score", exc_info=e)
