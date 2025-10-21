@@ -19,7 +19,7 @@ from datetime import datetime, timedelta
 import json
 import hashlib
 import pickle
-from sklearn.ensemble import RandomForestRegressor, IsolationForest
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier, IsolationForest
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 import warnings
@@ -112,7 +112,12 @@ class PredictiveIntelligenceEngine:
             features = self._extract_fatigue_features(creative_data)
 
             # Make predictions
-            fatigue_prob_7d = float(self.fatigue_model.predict_proba([features])[0][1])
+            if hasattr(self.fatigue_model, 'predict_proba'):
+                fatigue_prob_7d = float(self.fatigue_model.predict_proba([features])[0][1])
+            else:
+                # For regression model, normalize prediction to [0, 1]
+                raw_pred = float(self.fatigue_model.predict([features])[0])
+                fatigue_prob_7d = np.clip(raw_pred, 0, 1)
             fatigue_prob_14d = self._calculate_14d_prediction(features, fatigue_prob_7d)
 
             # Calculate confidence and risk factors
@@ -694,7 +699,8 @@ class PredictiveIntelligenceEngine:
         # Train model
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-        self.fatigue_model = RandomForestRegressor(n_estimators=100, random_state=42)
+        # Use classifier for probability predictions
+        self.fatigue_model = RandomForestClassifier(n_estimators=100, random_state=42)
         self.fatigue_model.fit(X_train, y_train)
 
         # Calculate accuracy
@@ -879,11 +885,11 @@ class PredictiveIntelligenceEngine:
             "model_version": self._get_model_version(prediction_type)
         }
 
-        await self.db.predictions.insert_one(record)
+        await self.db.ml_predictions.insert_one(record)
 
     async def _get_recent_predictions(self, prediction_type: str, limit: int = 10) -> List[Dict[str, Any]]:
         """Get recent predictions for dashboard"""
-        cursor = self.db.predictions.find(
+        cursor = self.db.ml_predictions.find(
             {"prediction_type": prediction_type}
         ).sort("timestamp", -1).limit(limit)
 

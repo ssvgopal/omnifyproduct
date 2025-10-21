@@ -180,7 +180,8 @@ class TestPredictiveIntelligenceEngine:
 
         result = await engine.predict_creative_fatigue(sample_creative_data)
 
-        assert result["status"] != "error"
+        # Successful predictions don't have 'status' field, only errors do
+        assert "error" not in result or result.get("status") != "error"
         assert "creative_id" in result
         assert "fatigue_probability_7d" in result
         assert "fatigue_probability_14d" in result
@@ -219,7 +220,7 @@ class TestPredictiveIntelligenceEngine:
         for creative_data in test_cases:
             result = await engine.predict_creative_fatigue(creative_data)
             # Should handle edge cases gracefully
-            assert result["status"] != "error"
+            assert "error" not in result or result.get("status") != "error"
 
     @pytest.mark.asyncio
     async def test_forecast_customer_ltv_model_not_ready(self, engine):
@@ -236,7 +237,7 @@ class TestPredictiveIntelligenceEngine:
 
         result = await engine.forecast_customer_ltv(sample_customer_data)
 
-        assert result["status"] != "error"
+        assert "error" not in result or result.get("status") != "error"
         assert "customer_id" in result
         assert "predicted_90d_ltv" in result
         assert "ltv_confidence" in result
@@ -267,7 +268,7 @@ class TestPredictiveIntelligenceEngine:
 
         result = await engine.detect_anomalies(sample_performance_data)
 
-        assert result["status"] != "error"
+        assert "error" not in result or result.get("status") != "error"
         assert "campaign_id" in result
         assert "is_anomaly" in result
         assert "anomaly_score" in result
@@ -334,7 +335,7 @@ class TestPredictiveIntelligenceEngine:
 
         result = await engine.get_predictive_insights_dashboard()
 
-        assert result["status"] != "error"
+        assert "error" not in result or result.get("status") != "error"
         assert "fatigue_alerts" in result
         assert "ltv_forecasts" in result
         assert "anomaly_detection" in result
@@ -616,10 +617,10 @@ class TestPredictiveIntelligenceEngine:
         dashboard = await engine.get_predictive_insights_dashboard()
 
         # Verify complete workflow
-        assert fatigue_result["status"] != "error"
-        assert ltv_result["status"] != "error"
-        assert anomaly_result["status"] != "error"
-        assert dashboard["status"] != "error"
+        assert "error" not in fatigue_result or fatigue_result.get("status") != "error"
+        assert "error" not in ltv_result or ltv_result.get("status") != "error"
+        assert "error" not in anomaly_result or anomaly_result.get("status") != "error"
+        assert "error" not in dashboard or dashboard.get("status") != "error"
 
         # Verify learning system updated
         assert len(engine.learning_history) > 0
