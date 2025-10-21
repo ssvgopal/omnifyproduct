@@ -29,6 +29,7 @@ from api.adaptive_learning_routes import router as adaptive_learning_router
 from api.expert_intervention_routes import router as expert_intervention_router
 from api.critical_decision_routes import router as critical_decision_router
 from api.ai_ml_enhancements_routes import router as ai_ml_enhancements_router
+from api.performance_optimization_routes import router as performance_optimization_router
 
 # Import database schema manager
 from database.mongodb_schema import MongoDBSchema
@@ -427,6 +428,7 @@ app.include_router(adaptive_learning_router)
 app.include_router(expert_intervention_router)
 app.include_router(critical_decision_router)
 app.include_router(ai_ml_enhancements_router)
+app.include_router(performance_optimization_router)
 
 
 # ========== CORE API ENDPOINTS ==========
