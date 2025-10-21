@@ -1,16 +1,6 @@
 """
-Production-Ready Stripe API Integration for OmnifyProduct
-Complete Stripe payment processing integration
-
-Features:
-- OAuth2 authentication flow
-- Payment processing and management
-- Subscription management
-- Customer management
-- Invoice generation and tracking
-- Webhook handling
-- Multi-currency support
-- Refund processing
+Stripe API Integration
+Production-ready payment processing platform integration
 """
 
 import os
@@ -18,806 +8,602 @@ import asyncio
 import json
 import base64
 import hashlib
+import hmac
 from typing import Dict, List, Any, Optional, Union
 from datetime import datetime, timedelta
 from urllib.parse import urlencode, parse_qs
-
-try:
-    import httpx
-    HAS_HTTPX = True
-except ImportError:
-    HAS_HTTPX = False
-    httpx = None
+import httpx
+from dataclasses import dataclass
 
 from services.structured_logging import logger
 from services.production_secrets_manager import production_secrets_manager
 from services.production_tenant_manager import get_tenant_manager
 
-class StripeIntegration:
-    """
-    Complete Stripe API integration for payment processing
-    """
+@dataclass
+class StripeCustomer:
+    """Stripe customer data structure"""
+    customer_id: str
+    email: str
+    name: str
+    phone: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+    balance: float
+    currency: str
+    status: str
 
-    def __init__(self):
-        self.client_id = os.environ.get('STRIPE_CLIENT_ID')
-        self.client_secret = os.environ.get('STRIPE_CLIENT_SECRET')
-        self.publishable_key = os.environ.get('STRIPE_PUBLISHABLE_KEY')
-        self.webhook_secret = os.environ.get('STRIPE_WEBHOOK_SECRET')
-        self.redirect_uri = os.environ.get('STRIPE_REDIRECT_URI', 'http://localhost:8000/auth/stripe/callback')
+@dataclass
+class StripePayment:
+    """Stripe payment data structure"""
+    payment_id: str
+    customer_id: str
+    amount: float
+    currency: str
+    status: str
+    payment_method: str
+    created_at: datetime
+    description: str
 
-        # API configuration
-        self.base_url = 'https://api.stripe.com'
-        self.api_version = '2024-06-20'
-        self.timeout_seconds = 30
+@dataclass
+class StripeSubscription:
+    """Stripe subscription data structure"""
+    subscription_id: str
+    customer_id: str
+    status: str
+    current_period_start: datetime
+    current_period_end: datetime
+    amount: float
+    currency: str
+    created_at: datetime
 
-        # Rate limiting (Stripe has limits)
-        self.requests_per_second = 100  # Stripe allows high rate limits
-        self.requests_per_minute = 6000
-        self.daily_limit = 100000
-
-        # Cache settings
-        self.cache_ttl = 300  # 5 minutes
-
-        # HTTP client
-        self.client = None
-        if HAS_HTTPX:
-            self.client = httpx.AsyncClient(
-                base_url=self.base_url,
-                timeout=self.timeout_seconds
-            )
-
-        logger.info("Stripe integration initialized", extra={
-            "has_client": HAS_HTTPX and self.client is not None,
-            "base_url": self.base_url,
-            "api_version": self.api_version
-        })
-
-    # ========== OAUTH2 AUTHENTICATION ==========
-
-    def get_oauth_url(self, state: str) -> str:
-        """
-        Generate OAuth2 authorization URL for Stripe
-        """
-        base_url = "https://connect.stripe.com/oauth/authorize"
-        params = {
-            'response_type': 'code',
-            'client_id': self.client_id,
-            'redirect_uri': self.redirect_uri,
-            'scope': 'read_write',
-            'state': state
-        }
-
-        return f"{base_url}?{urlencode(params)}"
-
-    async def exchange_code_for_tokens(self, code: str) -> Optional[Dict[str, Any]]:
-        """
-        Exchange authorization code for access tokens
-        """
-        try:
-            if not self.client:
-                return None
-
-            token_url = "/oauth/token"
-            data = {
-                'grant_type': 'authorization_code',
-                'client_id': self.client_id,
-                'client_secret': self.client_secret,
-                'code': code
+class StripeClient:
+    """Stripe API client with production-ready implementation"""
+    
+    def __init__(self, credentials: Dict[str, Any]):
+        self.credentials = credentials
+        self.api_key = credentials.get("api_key")
+        self.webhook_secret = credentials.get("webhook_secret")
+        self.api_version = "2023-10-16"
+        self.base_url = "https://api.stripe.com/v1"
+        
+        # HTTP client configuration
+        self.client = httpx.AsyncClient(
+            base_url=self.base_url,
+            timeout=30.0,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Stripe-Version": self.api_version,
+                "User-Agent": "OmnifyProduct/2.0.0"
             }
-
-            response = await self.client.post(token_url, data=data)
+        )
+    
+    async def authenticate(self) -> bool:
+        """Authenticate with Stripe API"""
+        try:
+            response = await self.client.get("/account")
+            return response.status_code == 200
+        except Exception as e:
+            logger.error(f"Stripe authentication error: {e}")
+            return False
+    
+    async def get_customers(self, limit: int = 100) -> List[StripeCustomer]:
+        """Get Stripe customers"""
+        try:
+            url = "/customers"
+            params = {
+                "limit": limit
+            }
+            
+            response = await self.client.get(url, params=params)
             response.raise_for_status()
-
-            tokens = response.json()
-            tokens['expires_at'] = datetime.utcnow() + timedelta(seconds=tokens.get('expires_in', 3600))
-
-            # Get account info
-            account_info = await self._get_account_info(tokens['access_token'])
-
-            tokens.update({
-                'stripe_user_id': account_info.get('id'),
-                'stripe_publishable_key': account_info.get('keys', {}).get('publishable'),
-                'country': account_info.get('country'),
-                'currency': account_info.get('default_currency'),
-                'business_type': account_info.get('business_type')
+            
+            data = response.json()
+            customers = []
+            
+            for customer_data in data.get("data", []):
+                customer = StripeCustomer(
+                    customer_id=customer_data.get("id"),
+                    email=customer_data.get("email"),
+                    name=customer_data.get("name"),
+                    phone=customer_data.get("phone"),
+                    created_at=datetime.fromtimestamp(customer_data.get("created", 0)),
+                    updated_at=datetime.fromtimestamp(customer_data.get("created", 0)),  # Stripe doesn't have updated_at
+                    balance=customer_data.get("balance", 0) / 100,  # Convert from cents
+                    currency=customer_data.get("currency", "usd"),
+                    status="active" if not customer_data.get("deleted") else "deleted"
+                )
+                customers.append(customer)
+            
+            logger.info(f"Retrieved {len(customers)} Stripe customers", extra={
+                "customer_count": len(customers)
             })
-
-            logger.info("Stripe OAuth tokens obtained successfully", extra={
-                "stripe_user_id": account_info.get('id'),
-                "country": account_info.get('country')
-            })
-
-            return tokens
-
+            
+            return customers
+            
         except Exception as e:
-            logger.error("Failed to exchange Stripe OAuth code for tokens", exc_info=e)
-            return None
-
-    async def _get_account_info(self, access_token: str) -> Dict[str, Any]:
-        """Get account information"""
-        try:
-            if not self.client:
-                return {}
-
-            headers = {'Authorization': f'Bearer {access_token}'}
-            response = await self.client.get('/v1/account', headers=headers)
-            response.raise_for_status()
-
-            return response.json()
-
-        except Exception as e:
-            logger.warning("Failed to get Stripe account info", exc_info=e)
-            return {}
-
-    async def get_valid_access_token(self, organization_id: str, account_id: str) -> Optional[str]:
-        """
-        Get valid access token for Stripe account
-        """
-        try:
-            # Get stored tokens
-            tokens_key = f"stripe_tokens_{organization_id}_{account_id}"
-            tokens = await production_secrets_manager.get_secret(tokens_key)
-
-            if not tokens:
-                return None
-
-            # Check if token is still valid (with buffer)
-            expires_at = datetime.fromisoformat(tokens['expires_at'])
-            buffer_time = timedelta(minutes=5)  # Refresh 5 minutes before expiry
-
-            if datetime.utcnow() >= (expires_at - buffer_time):
-                # Refresh token if needed (Stripe tokens typically don't expire for connected accounts)
-                # For now, just return the existing token
-                pass
-
-            return tokens['access_token']
-
-        except Exception as e:
-            logger.error("Failed to get valid Stripe access token", exc_info=e, extra={
-                "organization_id": organization_id,
-                "account_id": account_id
-            })
-            return None
-
-    # ========== PAYMENT PROCESSING ==========
-
-    async def create_payment_intent(
-        self,
-        organization_id: str,
-        account_id: str,
-        payment_data: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Create a payment intent for processing
-        """
-        try:
-            access_token = await self.get_valid_access_token(organization_id, account_id)
-            if not access_token:
-                return None
-
-            headers = {
-                'Authorization': f'Bearer {access_token}',
-                'Content-Type': 'application/x-www-form-urlencoded'
-            }
-
-            # Format payment data for Stripe API
-            form_data = {
-                'amount': int(float(payment_data.get('amount', 0)) * 100),  # Convert to cents
-                'currency': payment_data.get('currency', 'usd'),
-                'payment_method_types[]': payment_data.get('payment_method_types', ['card']),
-                'description': payment_data.get('description', ''),
-                'metadata[order_id]': payment_data.get('order_id', ''),
-                'metadata[customer_id]': payment_data.get('customer_id', '')
-            }
-
-            # Add customer if provided
-            if payment_data.get('customer_id'):
-                form_data['customer'] = payment_data['customer_id']
-
-            response = await self.client.post('/v1/payment_intents', headers=headers, data=form_data)
-            response.raise_for_status()
-
-            payment_intent = response.json()
-
-            logger.info("Stripe payment intent created", extra={
-                "organization_id": organization_id,
-                "account_id": account_id,
-                "payment_intent_id": payment_intent.get('id'),
-                "amount": payment_data.get('amount')
-            })
-
-            return payment_intent
-
-        except Exception as e:
-            logger.error("Failed to create Stripe payment intent", exc_info=e, extra={
-                "organization_id": organization_id,
-                "account_id": account_id
-            })
-            return None
-
-    async def confirm_payment_intent(
-        self,
-        organization_id: str,
-        account_id: str,
-        payment_intent_id: str,
-        payment_method_id: str
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Confirm a payment intent
-        """
-        try:
-            access_token = await self.get_valid_access_token(organization_id, account_id)
-            if not access_token:
-                return None
-
-            headers = {
-                'Authorization': f'Bearer {access_token}',
-                'Content-Type': 'application/x-www-form-urlencoded'
-            }
-
-            form_data = {
-                'payment_method': payment_method_id
-            }
-
-            response = await self.client.post(
-                f'/v1/payment_intents/{payment_intent_id}/confirm',
-                headers=headers,
-                data=form_data
-            )
-            response.raise_for_status()
-
-            payment_intent = response.json()
-
-            logger.info("Stripe payment intent confirmed", extra={
-                "organization_id": organization_id,
-                "account_id": account_id,
-                "payment_intent_id": payment_intent_id,
-                "status": payment_intent.get('status')
-            })
-
-            return payment_intent
-
-        except Exception as e:
-            logger.error("Failed to confirm Stripe payment intent", exc_info=e, extra={
-                "organization_id": organization_id,
-                "account_id": account_id,
-                "payment_intent_id": payment_intent_id
-            })
-            return None
-
-    # ========== CUSTOMER MANAGEMENT ==========
-
-    async def create_customer(
-        self,
-        organization_id: str,
-        account_id: str,
-        customer_data: Dict[str, Any]
-    ) -> Optional[str]:
-        """
-        Create a new customer
-        """
-        try:
-            access_token = await self.get_valid_access_token(organization_id, account_id)
-            if not access_token:
-                return None
-
-            headers = {
-                'Authorization': f'Bearer {access_token}',
-                'Content-Type': 'application/x-www-form-urlencoded'
-            }
-
-            form_data = {
-                'email': customer_data.get('email'),
-                'name': customer_data.get('name'),
-                'phone': customer_data.get('phone'),
-                'description': customer_data.get('description', ''),
-                'metadata[organization_id]': organization_id
-            }
-
-            # Add address if provided
-            if customer_data.get('address'):
-                address = customer_data['address']
-                form_data.update({
-                    'address[line1]': address.get('line1'),
-                    'address[line2]': address.get('line2'),
-                    'address[city]': address.get('city'),
-                    'address[state]': address.get('state'),
-                    'address[postal_code]': address.get('postal_code'),
-                    'address[country]': address.get('country')
-                })
-
-            response = await self.client.post('/v1/customers', headers=headers, data=form_data)
-            response.raise_for_status()
-
-            customer = response.json()
-            customer_id = customer.get('id')
-
-            logger.info("Stripe customer created", extra={
-                "organization_id": organization_id,
-                "account_id": account_id,
-                "customer_id": customer_id,
-                "email": customer_data.get('email')
-            })
-
-            return customer_id
-
-        except Exception as e:
-            logger.error("Failed to create Stripe customer", exc_info=e, extra={
-                "organization_id": organization_id,
-                "account_id": account_id
-            })
-            return None
-
-    async def get_customers(
-        self,
-        organization_id: str,
-        account_id: str,
-        limit: int = 100
-    ) -> List[Dict[str, Any]]:
-        """
-        Retrieve customers
-        """
-        try:
-            access_token = await self.get_valid_access_token(organization_id, account_id)
-            if not access_token:
-                return []
-
-            headers = {'Authorization': f'Bearer {access_token}'}
-
-            params = {'limit': min(limit, 100)}
-            response = await self.client.get('/v1/customers', headers=headers, params=params)
-            response.raise_for_status()
-
-            customers_data = response.json()
-            customers = customers_data.get('data', [])
-
-            # Format customers for our system
-            formatted_customers = []
-            for customer in customers:
-                formatted_customers.append({
-                    "customer_id": customer.get('id'),
-                    "email": customer.get('email'),
-                    "name": customer.get('name'),
-                    "phone": customer.get('phone'),
-                    "description": customer.get('description'),
-                    "created": customer.get('created'),
-                    "default_source": customer.get('default_source'),
-                    "delinquent": customer.get('delinquent'),
-                    "metadata": customer.get('metadata', {}),
-                    "address": customer.get('address')
-                })
-
-            logger.info("Stripe customers retrieved", extra={
-                "organization_id": organization_id,
-                "account_id": account_id,
-                "customer_count": len(formatted_customers)
-            })
-
-            return formatted_customers
-
-        except Exception as e:
-            logger.error("Failed to get Stripe customers", exc_info=e, extra={
-                "organization_id": organization_id,
-                "account_id": account_id
-            })
+            logger.error(f"Error getting Stripe customers: {e}")
             return []
-
-    # ========== SUBSCRIPTION MANAGEMENT ==========
-
-    async def create_subscription(
-        self,
-        organization_id: str,
-        account_id: str,
-        subscription_data: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Create a subscription
-        """
+    
+    async def create_customer(self, customer_data: Dict[str, Any]) -> Optional[str]:
+        """Create Stripe customer"""
         try:
-            access_token = await self.get_valid_access_token(organization_id, account_id)
-            if not access_token:
-                return None
-
-            headers = {
-                'Authorization': f'Bearer {access_token}',
-                'Content-Type': 'application/x-www-form-urlencoded'
+            url = "/customers"
+            
+            # Prepare customer payload
+            payload = {
+                "email": customer_data["email"],
+                "name": customer_data.get("name"),
+                "phone": customer_data.get("phone"),
+                "description": customer_data.get("description"),
+                "metadata": customer_data.get("metadata", {})
             }
-
-            form_data = {
-                'customer': subscription_data.get('customer_id'),
-                'items[0][price]': subscription_data.get('price_id'),
-                'metadata[organization_id]': organization_id,
-                'metadata[plan_name]': subscription_data.get('plan_name', '')
-            }
-
-            # Add trial period if provided
-            if subscription_data.get('trial_period_days'):
-                form_data['trial_period_days'] = subscription_data['trial_period_days']
-
-            response = await self.client.post('/v1/subscriptions', headers=headers, data=form_data)
+            
+            response = await self.client.post(url, data=payload)
             response.raise_for_status()
-
-            subscription = response.json()
-
-            logger.info("Stripe subscription created", extra={
-                "organization_id": organization_id,
-                "account_id": account_id,
-                "subscription_id": subscription.get('id'),
-                "customer_id": subscription_data.get('customer_id')
+            
+            result = response.json()
+            customer_id = result.get("id")
+            
+            logger.info(f"Created Stripe customer {customer_id}", extra={
+                "customer_id": customer_id,
+                "email": customer_data["email"]
             })
-
-            return subscription
-
+            
+            return customer_id
+            
         except Exception as e:
-            logger.error("Failed to create Stripe subscription", exc_info=e, extra={
-                "organization_id": organization_id,
-                "account_id": account_id
-            })
+            logger.error(f"Error creating Stripe customer: {e}")
             return None
-
-    async def cancel_subscription(
-        self,
-        organization_id: str,
-        account_id: str,
-        subscription_id: str,
-        cancel_at_period_end: bool = True
-    ) -> bool:
-        """
-        Cancel a subscription
-        """
+    
+    async def get_payments(self, customer_id: Optional[str] = None, limit: int = 100) -> List[StripePayment]:
+        """Get Stripe payments"""
         try:
-            access_token = await self.get_valid_access_token(organization_id, account_id)
-            if not access_token:
-                return False
-
-            headers = {
-                'Authorization': f'Bearer {access_token}',
-                'Content-Type': 'application/x-www-form-urlencoded'
+            url = "/payment_intents"
+            params = {
+                "limit": limit
             }
-
-            form_data = {
-                'cancel_at_period_end': cancel_at_period_end
-            }
-
-            response = await self.client.post(
-                f'/v1/subscriptions/{subscription_id}',
-                headers=headers,
-                data=form_data
-            )
+            
+            if customer_id:
+                params["customer"] = customer_id
+            
+            response = await self.client.get(url, params=params)
             response.raise_for_status()
-
-            logger.info("Stripe subscription cancelled", extra={
-                "organization_id": organization_id,
-                "account_id": account_id,
+            
+            data = response.json()
+            payments = []
+            
+            for payment_data in data.get("data", []):
+                payment = StripePayment(
+                    payment_id=payment_data.get("id"),
+                    customer_id=payment_data.get("customer"),
+                    amount=payment_data.get("amount", 0) / 100,  # Convert from cents
+                    currency=payment_data.get("currency", "usd"),
+                    status=payment_data.get("status"),
+                    payment_method=payment_data.get("payment_method"),
+                    created_at=datetime.fromtimestamp(payment_data.get("created", 0)),
+                    description=payment_data.get("description", "")
+                )
+                payments.append(payment)
+            
+            logger.info(f"Retrieved {len(payments)} Stripe payments", extra={
+                "customer_id": customer_id,
+                "payment_count": len(payments)
+            })
+            
+            return payments
+            
+        except Exception as e:
+            logger.error(f"Error getting Stripe payments: {e}")
+            return []
+    
+    async def create_payment(self, payment_data: Dict[str, Any]) -> Optional[str]:
+        """Create Stripe payment intent"""
+        try:
+            url = "/payment_intents"
+            
+            # Prepare payment payload
+            payload = {
+                "amount": int(payment_data["amount"] * 100),  # Convert to cents
+                "currency": payment_data.get("currency", "usd"),
+                "customer": payment_data.get("customer_id"),
+                "description": payment_data.get("description"),
+                "payment_method": payment_data.get("payment_method"),
+                "confirmation_method": payment_data.get("confirmation_method", "automatic"),
+                "confirm": payment_data.get("confirm", True),
+                "metadata": payment_data.get("metadata", {})
+            }
+            
+            response = await self.client.post(url, data=payload)
+            response.raise_for_status()
+            
+            result = response.json()
+            payment_id = result.get("id")
+            
+            logger.info(f"Created Stripe payment {payment_id}", extra={
+                "payment_id": payment_id,
+                "amount": payment_data["amount"],
+                "currency": payment_data.get("currency", "usd")
+            })
+            
+            return payment_id
+            
+        except Exception as e:
+            logger.error(f"Error creating Stripe payment: {e}")
+            return None
+    
+    async def get_subscriptions(self, customer_id: Optional[str] = None, limit: int = 100) -> List[StripeSubscription]:
+        """Get Stripe subscriptions"""
+        try:
+            url = "/subscriptions"
+            params = {
+                "limit": limit
+            }
+            
+            if customer_id:
+                params["customer"] = customer_id
+            
+            response = await self.client.get(url, params=params)
+            response.raise_for_status()
+            
+            data = response.json()
+            subscriptions = []
+            
+            for sub_data in data.get("data", []):
+                subscription = StripeSubscription(
+                    subscription_id=sub_data.get("id"),
+                    customer_id=sub_data.get("customer"),
+                    status=sub_data.get("status"),
+                    current_period_start=datetime.fromtimestamp(sub_data.get("current_period_start", 0)),
+                    current_period_end=datetime.fromtimestamp(sub_data.get("current_period_end", 0)),
+                    amount=sub_data.get("items", {}).get("data", [{}])[0].get("price", {}).get("unit_amount", 0) / 100,
+                    currency=sub_data.get("currency", "usd"),
+                    created_at=datetime.fromtimestamp(sub_data.get("created", 0))
+                )
+                subscriptions.append(subscription)
+            
+            logger.info(f"Retrieved {len(subscriptions)} Stripe subscriptions", extra={
+                "customer_id": customer_id,
+                "subscription_count": len(subscriptions)
+            })
+            
+            return subscriptions
+            
+        except Exception as e:
+            logger.error(f"Error getting Stripe subscriptions: {e}")
+            return []
+    
+    async def create_subscription(self, subscription_data: Dict[str, Any]) -> Optional[str]:
+        """Create Stripe subscription"""
+        try:
+            url = "/subscriptions"
+            
+            # Prepare subscription payload
+            payload = {
+                "customer": subscription_data["customer_id"],
+                "items": [{
+                    "price": subscription_data["price_id"],
+                    "quantity": subscription_data.get("quantity", 1)
+                }],
+                "payment_behavior": subscription_data.get("payment_behavior", "default_incomplete"),
+                "payment_settings": {
+                    "save_default_payment_method": subscription_data.get("save_default_payment_method", True)
+                },
+                "expand": ["latest_invoice.payment_intent"]
+            }
+            
+            response = await self.client.post(url, data=payload)
+            response.raise_for_status()
+            
+            result = response.json()
+            subscription_id = result.get("id")
+            
+            logger.info(f"Created Stripe subscription {subscription_id}", extra={
                 "subscription_id": subscription_id,
-                "cancel_at_period_end": cancel_at_period_end
+                "customer_id": subscription_data["customer_id"]
             })
-
-            return True
-
+            
+            return subscription_id
+            
         except Exception as e:
-            logger.error("Failed to cancel Stripe subscription", exc_info=e, extra={
-                "organization_id": organization_id,
-                "account_id": account_id,
-                "subscription_id": subscription_id
-            })
-            return False
-
-    # ========== INVOICE MANAGEMENT ==========
-
-    async def create_invoice(
-        self,
-        organization_id: str,
-        account_id: str,
-        invoice_data: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Create an invoice
-        """
-        try:
-            access_token = await self.get_valid_access_token(organization_id, account_id)
-            if not access_token:
-                return None
-
-            headers = {
-                'Authorization': f'Bearer {access_token}',
-                'Content-Type': 'application/x-www-form-urlencoded'
-            }
-
-            form_data = {
-                'customer': invoice_data.get('customer_id'),
-                'description': invoice_data.get('description', ''),
-                'metadata[organization_id]': organization_id,
-                'metadata[order_id]': invoice_data.get('order_id', '')
-            }
-
-            # Add line items
-            for i, item in enumerate(invoice_data.get('line_items', [])):
-                form_data[f'lines[{i}][amount]'] = int(float(item.get('amount', 0)) * 100)
-                form_data[f'lines[{i}][currency]'] = item.get('currency', 'usd')
-                form_data[f'lines[{i}][description]'] = item.get('description', '')
-
-            response = await self.client.post('/v1/invoices', headers=headers, data=form_data)
-            response.raise_for_status()
-
-            invoice = response.json()
-
-            logger.info("Stripe invoice created", extra={
-                "organization_id": organization_id,
-                "account_id": account_id,
-                "invoice_id": invoice.get('id'),
-                "customer_id": invoice_data.get('customer_id')
-            })
-
-            return invoice
-
-        except Exception as e:
-            logger.error("Failed to create Stripe invoice", exc_info=e, extra={
-                "organization_id": organization_id,
-                "account_id": account_id
-            })
+            logger.error(f"Error creating Stripe subscription: {e}")
             return None
-
-    async def finalize_invoice(
-        self,
-        organization_id: str,
-        account_id: str,
-        invoice_id: str
-    ) -> bool:
-        """
-        Finalize an invoice
-        """
+    
+    async def create_invoice(self, invoice_data: Dict[str, Any]) -> Optional[str]:
+        """Create Stripe invoice"""
         try:
-            access_token = await self.get_valid_access_token(organization_id, account_id)
-            if not access_token:
-                return False
-
-            headers = {'Authorization': f'Bearer {access_token}'}
-
-            response = await self.client.post(
-                f'/v1/invoices/{invoice_id}/finalize',
-                headers=headers
-            )
+            url = "/invoices"
+            
+            # Prepare invoice payload
+            payload = {
+                "customer": invoice_data["customer_id"],
+                "description": invoice_data.get("description"),
+                "metadata": invoice_data.get("metadata", {}),
+                "auto_advance": invoice_data.get("auto_advance", True)
+            }
+            
+            response = await self.client.post(url, data=payload)
             response.raise_for_status()
-
-            logger.info("Stripe invoice finalized", extra={
-                "organization_id": organization_id,
-                "account_id": account_id,
+            
+            result = response.json()
+            invoice_id = result.get("id")
+            
+            logger.info(f"Created Stripe invoice {invoice_id}", extra={
+                "invoice_id": invoice_id,
+                "customer_id": invoice_data["customer_id"]
+            })
+            
+            return invoice_id
+            
+        except Exception as e:
+            logger.error(f"Error creating Stripe invoice: {e}")
+            return None
+    
+    async def add_invoice_item(self, invoice_item_data: Dict[str, Any]) -> Optional[str]:
+        """Add item to Stripe invoice"""
+        try:
+            url = "/invoiceitems"
+            
+            # Prepare invoice item payload
+            payload = {
+                "customer": invoice_item_data["customer_id"],
+                "amount": int(invoice_item_data["amount"] * 100),  # Convert to cents
+                "currency": invoice_item_data.get("currency", "usd"),
+                "description": invoice_item_data.get("description"),
+                "invoice": invoice_item_data.get("invoice_id")
+            }
+            
+            response = await self.client.post(url, data=payload)
+            response.raise_for_status()
+            
+            result = response.json()
+            item_id = result.get("id")
+            
+            logger.info(f"Added Stripe invoice item {item_id}", extra={
+                "item_id": item_id,
+                "customer_id": invoice_item_data["customer_id"]
+            })
+            
+            return item_id
+            
+        except Exception as e:
+            logger.error(f"Error adding Stripe invoice item: {e}")
+            return None
+    
+    async def finalize_invoice(self, invoice_id: str) -> bool:
+        """Finalize Stripe invoice"""
+        try:
+            url = f"/invoices/{invoice_id}/finalize"
+            
+            response = await self.client.post(url)
+            response.raise_for_status()
+            
+            logger.info(f"Finalized Stripe invoice {invoice_id}", extra={
                 "invoice_id": invoice_id
             })
-
+            
             return True
-
+            
         except Exception as e:
-            logger.error("Failed to finalize Stripe invoice", exc_info=e, extra={
-                "organization_id": organization_id,
-                "account_id": account_id,
+            logger.error(f"Error finalizing Stripe invoice: {e}")
+            return False
+    
+    async def pay_invoice(self, invoice_id: str) -> bool:
+        """Pay Stripe invoice"""
+        try:
+            url = f"/invoices/{invoice_id}/pay"
+            
+            response = await self.client.post(url)
+            response.raise_for_status()
+            
+            logger.info(f"Paid Stripe invoice {invoice_id}", extra={
                 "invoice_id": invoice_id
             })
-            return False
-
-    # ========== REFUND PROCESSING ==========
-
-    async def create_refund(
-        self,
-        organization_id: str,
-        account_id: str,
-        refund_data: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Create a refund
-        """
-        try:
-            access_token = await self.get_valid_access_token(organization_id, account_id)
-            if not access_token:
-                return None
-
-            headers = {
-                'Authorization': f'Bearer {access_token}',
-                'Content-Type': 'application/x-www-form-urlencoded'
-            }
-
-            form_data = {
-                'payment_intent': refund_data.get('payment_intent_id'),
-                'amount': int(float(refund_data.get('amount', 0)) * 100),  # Convert to cents
-                'reason': refund_data.get('reason', 'requested_by_customer'),
-                'metadata[organization_id]': organization_id
-            }
-
-            response = await self.client.post('/v1/refunds', headers=headers, data=form_data)
-            response.raise_for_status()
-
-            refund = response.json()
-
-            logger.info("Stripe refund created", extra={
-                "organization_id": organization_id,
-                "account_id": account_id,
-                "refund_id": refund.get('id'),
-                "amount": refund_data.get('amount')
-            })
-
-            return refund
-
+            
+            return True
+            
         except Exception as e:
-            logger.error("Failed to create Stripe refund", exc_info=e, extra={
-                "organization_id": organization_id,
-                "account_id": account_id
-            })
-            return None
-
-    # ========== WEBHOOK HANDLING ==========
-
-    def verify_webhook_signature(self, payload: str, signature: str) -> bool:
-        """
-        Verify webhook signature
-        """
+            logger.error(f"Error paying Stripe invoice: {e}")
+            return False
+    
+    async def refund_payment(self, payment_id: str, amount: Optional[float] = None) -> Optional[str]:
+        """Refund Stripe payment"""
         try:
-            if not self.webhook_secret:
-                return False
-
-            # Parse signature
-            sig_parts = signature.split(',')
-            timestamp = None
-            v1_signature = None
-
-            for part in sig_parts:
-                if part.startswith('t='):
-                    timestamp = part[2:]
-                elif part.startswith('v1='):
-                    v1_signature = part[3:]
-
-            if not timestamp or not v1_signature:
-                return False
-
-            # Create expected signature
-            expected_signature = hashlib.sha256(
-                f"{timestamp}.{payload}".encode()
+            url = "/refunds"
+            
+            payload = {
+                "payment_intent": payment_id
+            }
+            
+            if amount:
+                payload["amount"] = int(amount * 100)  # Convert to cents
+            
+            response = await self.client.post(url, data=payload)
+            response.raise_for_status()
+            
+            result = response.json()
+            refund_id = result.get("id")
+            
+            logger.info(f"Created Stripe refund {refund_id}", extra={
+                "refund_id": refund_id,
+                "payment_id": payment_id,
+                "amount": amount
+            })
+            
+            return refund_id
+            
+        except Exception as e:
+            logger.error(f"Error creating Stripe refund: {e}")
+            return None
+    
+    async def get_account_info(self) -> Dict[str, Any]:
+        """Get Stripe account information"""
+        try:
+            url = "/account"
+            
+            response = await self.client.get(url)
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            account_info = {
+                "account_id": data.get("id"),
+                "name": data.get("business_profile", {}).get("name"),
+                "email": data.get("email"),
+                "country": data.get("country"),
+                "currency": data.get("default_currency"),
+                "charges_enabled": data.get("charges_enabled"),
+                "payouts_enabled": data.get("payouts_enabled"),
+                "created_at": datetime.fromtimestamp(data.get("created", 0))
+            }
+            
+            logger.info(f"Retrieved Stripe account info", extra={
+                "account_id": account_info["account_id"],
+                "name": account_info["name"]
+            })
+            
+            return account_info
+            
+        except Exception as e:
+            logger.error(f"Error getting Stripe account info: {e}")
+            return {}
+    
+    async def verify_webhook(self, payload: str, signature: str) -> bool:
+        """Verify Stripe webhook signature"""
+        try:
+            import hmac
+            import hashlib
+            
+            expected_sig = hmac.new(
+                self.webhook_secret.encode(),
+                payload.encode(),
+                hashlib.sha256
             ).hexdigest()
-
-            return v1_signature == expected_signature
-
+            
+            return hmac.compare_digest(f"sha256={expected_sig}", signature)
+            
         except Exception as e:
-            logger.error("Failed to verify Stripe webhook signature", exc_info=e)
+            logger.error(f"Error verifying Stripe webhook: {e}")
             return False
+    
+    async def close(self):
+        """Close HTTP client"""
+        await self.client.aclose()
 
-    async def process_webhook(self, payload: str, signature: str) -> Optional[Dict[str, Any]]:
-        """
-        Process webhook event
-        """
-        try:
-            if not self.verify_webhook_signature(payload, signature):
-                logger.warning("Invalid Stripe webhook signature")
-                return None
-
-            event_data = json.loads(payload)
-            event_type = event_data.get('type')
-
-            logger.info("Processing Stripe webhook", extra={
-                "event_type": event_type,
-                "event_id": event_data.get('id')
-            })
-
-            # Process different event types
-            if event_type == 'payment_intent.succeeded':
-                return await self._handle_payment_succeeded(event_data)
-            elif event_type == 'payment_intent.payment_failed':
-                return await self._handle_payment_failed(event_data)
-            elif event_type == 'invoice.payment_succeeded':
-                return await self._handle_invoice_payment_succeeded(event_data)
-            elif event_type == 'customer.subscription.created':
-                return await self._handle_subscription_created(event_data)
-            elif event_type == 'customer.subscription.deleted':
-                return await self._handle_subscription_deleted(event_data)
-
-            return {"status": "processed", "event_type": event_type}
-
-        except Exception as e:
-            logger.error("Failed to process Stripe webhook", exc_info=e)
-            return None
-
-    async def _handle_payment_succeeded(self, event_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle payment succeeded event"""
-        payment_intent = event_data.get('data', {}).get('object', {})
-        return {
-            "event_type": "payment_succeeded",
-            "payment_intent_id": payment_intent.get('id'),
-            "amount": payment_intent.get('amount'),
-            "currency": payment_intent.get('currency'),
-            "customer_id": payment_intent.get('customer')
-        }
-
-    async def _handle_payment_failed(self, event_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle payment failed event"""
-        payment_intent = event_data.get('data', {}).get('object', {})
-        return {
-            "event_type": "payment_failed",
-            "payment_intent_id": payment_intent.get('id'),
-            "amount": payment_intent.get('amount'),
-            "currency": payment_intent.get('currency'),
-            "customer_id": payment_intent.get('customer'),
-            "failure_reason": payment_intent.get('last_payment_error', {}).get('message')
-        }
-
-    async def _handle_invoice_payment_succeeded(self, event_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle invoice payment succeeded event"""
-        invoice = event_data.get('data', {}).get('object', {})
-        return {
-            "event_type": "invoice_payment_succeeded",
-            "invoice_id": invoice.get('id'),
-            "amount_paid": invoice.get('amount_paid'),
-            "currency": invoice.get('currency'),
-            "customer_id": invoice.get('customer')
-        }
-
-    async def _handle_subscription_created(self, event_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle subscription created event"""
-        subscription = event_data.get('data', {}).get('object', {})
-        return {
-            "event_type": "subscription_created",
-            "subscription_id": subscription.get('id'),
-            "customer_id": subscription.get('customer'),
-            "status": subscription.get('status'),
-            "current_period_start": subscription.get('current_period_start'),
-            "current_period_end": subscription.get('current_period_end')
-        }
-
-    async def _handle_subscription_deleted(self, event_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle subscription deleted event"""
-        subscription = event_data.get('data', {}).get('object', {})
-        return {
-            "event_type": "subscription_deleted",
-            "subscription_id": subscription.get('id'),
-            "customer_id": subscription.get('customer'),
-            "canceled_at": subscription.get('canceled_at')
-        }
-
-    # ========== UTILITY METHODS ==========
-
-    async def test_connection(self, organization_id: str, account_id: str) -> Dict[str, Any]:
-        """
-        Test connection to Stripe API
-        """
-        try:
-            access_token = await self.get_valid_access_token(organization_id, account_id)
-            if not access_token:
-                return {"status": "no_token"}
-
-            headers = {'Authorization': f'Bearer {access_token}'}
-            response = await self.client.get('/v1/account', headers=headers)
-            response.raise_for_status()
-
-            account_data = response.json()
-
-            return {
-                "status": "connected",
-                "account_id": account_data.get('id'),
-                "country": account_data.get('country'),
-                "currency": account_data.get('default_currency'),
-                "charges_enabled": account_data.get('charges_enabled'),
-                "payouts_enabled": account_data.get('payouts_enabled')
-            }
-
-        except Exception as e:
-            return {
-                "status": "error",
-                "error": str(e)
-            }
-
-    def get_required_scopes(self) -> List[str]:
-        """Get required OAuth2 scopes"""
-        return ['read_write']
-
-    def get_api_limits(self) -> Dict[str, Any]:
-        """Get Stripe API limits information"""
-        return {
-            "requests_per_second": self.requests_per_second,
-            "requests_per_minute": self.requests_per_minute,
-            "daily_limit": self.daily_limit,
-            "rate_limit_type": "per_second",
-            "burst_allowed": True,
-            "plan_based_limits": True,
-            "documentation_url": "https://stripe.com/docs/api"
-        }
-
-# Global Stripe integration instance
-stripe_integration = StripeIntegration()
+class StripeAdapter:
+    """Stripe adapter for platform integrations manager"""
+    
+    def __init__(self):
+        self.client = None
+        self.credentials = None
+    
+    async def initialize(self, credentials: Dict[str, Any]):
+        """Initialize Stripe client"""
+        self.credentials = credentials
+        self.client = StripeClient(credentials)
+        
+        # Test authentication
+        is_authenticated = await self.client.authenticate()
+        if not is_authenticated:
+            raise ValueError("Stripe authentication failed")
+        
+        logger.info("Stripe adapter initialized successfully")
+    
+    async def get_customers(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """Get customers"""
+        if not self.client:
+            raise ValueError("Stripe client not initialized")
+        
+        customers = await self.client.get_customers(limit)
+        return [customer.__dict__ for customer in customers]
+    
+    async def create_customer(self, customer_data: Dict[str, Any]) -> Optional[str]:
+        """Create customer"""
+        if not self.client:
+            raise ValueError("Stripe client not initialized")
+        
+        return await self.client.create_customer(customer_data)
+    
+    async def get_payments(self, customer_id: Optional[str] = None, limit: int = 100) -> List[Dict[str, Any]]:
+        """Get payments"""
+        if not self.client:
+            raise ValueError("Stripe client not initialized")
+        
+        payments = await self.client.get_payments(customer_id, limit)
+        return [payment.__dict__ for payment in payments]
+    
+    async def create_payment(self, payment_data: Dict[str, Any]) -> Optional[str]:
+        """Create payment"""
+        if not self.client:
+            raise ValueError("Stripe client not initialized")
+        
+        return await self.client.create_payment(payment_data)
+    
+    async def get_subscriptions(self, customer_id: Optional[str] = None, limit: int = 100) -> List[Dict[str, Any]]:
+        """Get subscriptions"""
+        if not self.client:
+            raise ValueError("Stripe client not initialized")
+        
+        subscriptions = await self.client.get_subscriptions(customer_id, limit)
+        return [subscription.__dict__ for subscription in subscriptions]
+    
+    async def create_subscription(self, subscription_data: Dict[str, Any]) -> Optional[str]:
+        """Create subscription"""
+        if not self.client:
+            raise ValueError("Stripe client not initialized")
+        
+        return await self.client.create_subscription(subscription_data)
+    
+    async def create_invoice(self, invoice_data: Dict[str, Any]) -> Optional[str]:
+        """Create invoice"""
+        if not self.client:
+            raise ValueError("Stripe client not initialized")
+        
+        return await self.client.create_invoice(invoice_data)
+    
+    async def add_invoice_item(self, invoice_item_data: Dict[str, Any]) -> Optional[str]:
+        """Add invoice item"""
+        if not self.client:
+            raise ValueError("Stripe client not initialized")
+        
+        return await self.client.add_invoice_item(invoice_item_data)
+    
+    async def finalize_invoice(self, invoice_id: str) -> bool:
+        """Finalize invoice"""
+        if not self.client:
+            raise ValueError("Stripe client not initialized")
+        
+        return await self.client.finalize_invoice(invoice_id)
+    
+    async def pay_invoice(self, invoice_id: str) -> bool:
+        """Pay invoice"""
+        if not self.client:
+            raise ValueError("Stripe client not initialized")
+        
+        return await self.client.pay_invoice(invoice_id)
+    
+    async def refund_payment(self, payment_id: str, amount: Optional[float] = None) -> Optional[str]:
+        """Refund payment"""
+        if not self.client:
+            raise ValueError("Stripe client not initialized")
+        
+        return await self.client.refund_payment(payment_id, amount)
+    
+    async def get_account_info(self) -> Dict[str, Any]:
+        """Get account information"""
+        if not self.client:
+            raise ValueError("Stripe client not initialized")
+        
+        return await self.client.get_account_info()
+    
+    async def verify_webhook(self, payload: str, signature: str) -> bool:
+        """Verify webhook signature"""
+        if not self.client:
+            raise ValueError("Stripe client not initialized")
+        
+        return await self.client.verify_webhook(payload, signature)
+    
+    async def close(self):
+        """Close client"""
+        if self.client:
+            await self.client.close()

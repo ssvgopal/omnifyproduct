@@ -1,16 +1,6 @@
 """
-Production-Ready LinkedIn Ads API Integration for OmnifyProduct
-Complete LinkedIn Marketing API integration with campaign management and analytics
-
-Features:
-- OAuth2 authentication flow
-- Campaign creation and management
-- Audience targeting
-- Creative asset management
-- Performance analytics
-- Conversion tracking
-- Budget optimization
-- Real-time reporting
+LinkedIn Ads API Integration
+Production-ready LinkedIn advertising platform integration
 """
 
 import os
@@ -18,620 +8,456 @@ import asyncio
 import json
 import base64
 import hashlib
+import hmac
 from typing import Dict, List, Any, Optional, Union
 from datetime import datetime, timedelta
 from urllib.parse import urlencode, parse_qs
-
-try:
-    import httpx
-    HAS_HTTPX = True
-except ImportError:
-    HAS_HTTPX = False
-    httpx = None
+import httpx
+from dataclasses import dataclass
 
 from services.structured_logging import logger
 from services.production_secrets_manager import production_secrets_manager
 from services.production_tenant_manager import get_tenant_manager
 
-class LinkedInAdsIntegration:
-    """
-    Complete LinkedIn Ads API integration for B2B campaigns
-    """
+@dataclass
+class LinkedInCampaign:
+    """LinkedIn campaign data structure"""
+    campaign_id: str
+    name: str
+    status: str
+    objective: str
+    budget: float
+    daily_budget: Optional[float]
+    start_date: datetime
+    end_date: Optional[datetime]
+    target_audience: Dict[str, Any]
+    created_at: datetime
+    updated_at: datetime
 
-    def __init__(self):
-        self.client_id = os.environ.get('LINKEDIN_CLIENT_ID')
-        self.client_secret = os.environ.get('LINKEDIN_CLIENT_SECRET')
-        self.redirect_uri = os.environ.get('LINKEDIN_REDIRECT_URI', 'http://localhost:8000/auth/linkedin/callback')
+@dataclass
+class LinkedInAd:
+    """LinkedIn ad data structure"""
+    ad_id: str
+    campaign_id: str
+    name: str
+    status: str
+    format: str
+    creative: Dict[str, Any]
+    targeting: Dict[str, Any]
+    bid_strategy: str
+    created_at: datetime
+    updated_at: datetime
 
-        # API configuration
-        self.base_url = 'https://api.linkedin.com'
-        self.api_version = 'v2'
-        self.timeout_seconds = 30
-
-        # Rate limiting (LinkedIn has strict limits)
-        self.requests_per_second = 2  # Conservative limit
-        self.requests_per_hour = 1000
-        self.daily_limit = 10000
-
-        # Cache settings
-        self.cache_ttl = 300  # 5 minutes
-
-        # HTTP client
-        self.client = None
-        if HAS_HTTPX:
-            self.client = httpx.AsyncClient(
-                base_url=self.base_url,
-                timeout=self.timeout_seconds
-            )
-
-        logger.info("LinkedIn Ads integration initialized", extra={
-            "has_client": HAS_HTTPX and self.client is not None,
-            "base_url": self.base_url,
-            "rate_limit_per_second": self.requests_per_second
-        })
-
-    # ========== OAUTH2 AUTHENTICATION ==========
-
-    def get_oauth_url(self, state: str) -> str:
-        """
-        Generate OAuth2 authorization URL for LinkedIn
-        """
-        base_url = "https://www.linkedin.com/oauth/v2/authorization"
-        params = {
-            'response_type': 'code',
-            'client_id': self.client_id,
-            'redirect_uri': self.redirect_uri,
-            'state': state,
-            'scope': 'r_ads r_ads_reporting r_organization_social'
-        }
-
-        return f"{base_url}?{urlencode(params)}"
-
-    async def exchange_code_for_tokens(self, code: str) -> Optional[Dict[str, Any]]:
-        """
-        Exchange authorization code for access tokens
-        """
-        try:
-            if not self.client:
-                return None
-
-            token_url = "/oauth/v2/accessToken"
-            data = {
-                'grant_type': 'authorization_code',
-                'code': code,
-                'redirect_uri': self.redirect_uri,
-                'client_id': self.client_id,
-                'client_secret': self.client_secret
+class LinkedInAdsClient:
+    """LinkedIn Ads API client with production-ready implementation"""
+    
+    def __init__(self, credentials: Dict[str, Any]):
+        self.credentials = credentials
+        self.access_token = credentials.get("access_token")
+        self.account_id = credentials.get("account_id")
+        self.api_version = "v2"
+        self.base_url = f"https://api.linkedin.com/{self.api_version}"
+        
+        # HTTP client configuration
+        self.client = httpx.AsyncClient(
+            base_url=self.base_url,
+            timeout=30.0,
+            headers={
+                "Authorization": f"Bearer {self.access_token}",
+                "Content-Type": "application/json",
+                "X-Restli-Protocol-Version": "2.0.0",
+                "User-Agent": "OmnifyProduct/2.0.0"
             }
-
-            response = await self.client.post(token_url, data=data)
-            response.raise_for_status()
-
-            tokens = response.json()
-            tokens['expires_at'] = datetime.utcnow() + timedelta(seconds=tokens.get('expires_in', 3600))
-
-            # Get user info
-            access_token = tokens['access_token']
-            user_info = await self._get_user_info(access_token)
-
-            tokens.update({
-                'user_id': user_info.get('id'),
-                'user_name': user_info.get('firstName', '') + ' ' + user_info.get('lastName', '')
-            })
-
-            logger.info("LinkedIn OAuth tokens obtained successfully", extra={
-                "user_id": user_info.get('id')
-            })
-
-            return tokens
-
-        except Exception as e:
-            logger.error("Failed to exchange LinkedIn OAuth code for tokens", exc_info=e)
-            return None
-
-    async def _get_user_info(self, access_token: str) -> Dict[str, Any]:
-        """Get user information from access token"""
+        )
+    
+    async def authenticate(self) -> bool:
+        """Authenticate with LinkedIn Ads API"""
         try:
-            if not self.client:
-                return {}
-
-            headers = {'Authorization': f'Bearer {access_token}'}
-            response = await self.client.get('/v2/people/~', headers=headers)
-            response.raise_for_status()
-
-            return response.json()
-
+            response = await self.client.get("/adAccounts")
+            return response.status_code == 200
         except Exception as e:
-            logger.warning("Failed to get LinkedIn user info", exc_info=e)
-            return {}
-
-    async def refresh_access_token(self, refresh_token: str) -> Optional[Dict[str, Any]]:
-        """
-        Refresh expired access token
-        """
+            logger.error(f"LinkedIn Ads authentication error: {e}")
+            return False
+    
+    async def get_campaigns(self, account_id: Optional[str] = None) -> List[LinkedInCampaign]:
+        """Get LinkedIn campaigns"""
         try:
-            if not self.client:
-                return None
-
-            token_url = "/oauth/v2/accessToken"
-            data = {
-                'grant_type': 'refresh_token',
-                'refresh_token': refresh_token,
-                'client_id': self.client_id,
-                'client_secret': self.client_secret
-            }
-
-            response = await self.client.post(token_url, data=data)
+            account = account_id or self.account_id
+            url = f"/adAccounts/{account}/campaigns"
+            
+            response = await self.client.get(url)
             response.raise_for_status()
-
-            tokens = response.json()
-            tokens['expires_at'] = datetime.utcnow() + timedelta(seconds=tokens.get('expires_in', 3600))
-
-            logger.info("LinkedIn access token refreshed")
-            return tokens
-
-        except Exception as e:
-            logger.error("Failed to refresh LinkedIn access token", exc_info=e)
-            return None
-
-    async def get_valid_access_token(self, organization_id: str, account_id: str) -> Optional[str]:
-        """
-        Get valid access token for LinkedIn account
-        """
-        try:
-            # Get stored tokens
-            tokens_key = f"linkedin_tokens_{organization_id}_{account_id}"
-            tokens = await production_secrets_manager.get_secret(tokens_key)
-
-            if not tokens:
-                return None
-
-            # Check if token is still valid (with buffer)
-            expires_at = datetime.fromisoformat(tokens['expires_at'])
-            buffer_time = timedelta(minutes=5)  # Refresh 5 minutes before expiry
-
-            if datetime.utcnow() >= (expires_at - buffer_time):
-                # Refresh token
-                refreshed = await self.refresh_access_token(tokens['refresh_token'])
-                if refreshed:
-                    refreshed['refresh_token'] = tokens['refresh_token']  # Keep original refresh token
-                    await production_secrets_manager.update_secret(tokens_key, refreshed)
-                    tokens = refreshed
-                else:
-                    logger.warning("Failed to refresh LinkedIn tokens", extra={
-                        "organization_id": organization_id,
-                        "account_id": account_id
-                    })
-                    return None
-
-            return tokens['access_token']
-
-        except Exception as e:
-            logger.error("Failed to get valid LinkedIn access token", exc_info=e, extra={
-                "organization_id": organization_id,
-                "account_id": account_id
+            
+            data = response.json()
+            campaigns = []
+            
+            for campaign_data in data.get("elements", []):
+                campaign = LinkedInCampaign(
+                    campaign_id=campaign_data.get("id"),
+                    name=campaign_data.get("name"),
+                    status=campaign_data.get("status"),
+                    objective=campaign_data.get("objective"),
+                    budget=campaign_data.get("budget", {}).get("amount"),
+                    daily_budget=campaign_data.get("dailyBudget", {}).get("amount"),
+                    start_date=datetime.fromisoformat(campaign_data.get("startDate", "").replace("Z", "+00:00")),
+                    end_date=datetime.fromisoformat(campaign_data.get("endDate", "").replace("Z", "+00:00")) if campaign_data.get("endDate") else None,
+                    target_audience=campaign_data.get("targetingCriteria", {}),
+                    created_at=datetime.fromisoformat(campaign_data.get("created", "").replace("Z", "+00:00")),
+                    updated_at=datetime.fromisoformat(campaign_data.get("lastModified", "").replace("Z", "+00:00"))
+                )
+                campaigns.append(campaign)
+            
+            logger.info(f"Retrieved {len(campaigns)} LinkedIn campaigns", extra={
+                "account_id": account,
+                "campaign_count": len(campaigns)
             })
-            return None
-
-    # ========== ACCOUNT MANAGEMENT ==========
-
-    async def list_ad_accounts(self, organization_id: str) -> List[Dict[str, Any]]:
-        """
-        List accessible LinkedIn ad accounts
-        """
-        try:
-            access_token = await self.get_valid_access_token(organization_id, "default")
-            if not access_token:
-                return []
-
-            headers = {'Authorization': f'Bearer {access_token}'}
-
-            # Get ad accounts
-            response = await self.client.get('/v2/adAccountsV2', headers=headers)
-            response.raise_for_status()
-
-            accounts_data = response.json()
-            accounts = accounts_data.get('elements', [])
-
-            ad_accounts = []
-            for account in accounts:
-                ad_accounts.append({
-                    "account_id": account.get('id'),
-                    "name": account.get('name'),
-                    "currency": account.get('currency'),
-                    "timezone": account.get('timezone'),
-                    "status": account.get('status'),
-                    "type": account.get('type'),
-                    "reference": account.get('reference')
-                })
-
-            # Cache results
-            cache_key = f"linkedin_ad_accounts_{organization_id}"
-            await production_secrets_manager.store_secret(cache_key, ad_accounts, {"ttl": self.cache_ttl})
-
-            logger.info("LinkedIn ad accounts retrieved", extra={
-                "organization_id": organization_id,
-                "account_count": len(ad_accounts)
-            })
-
-            return ad_accounts
-
+            
+            return campaigns
+            
         except Exception as e:
-            logger.error("Failed to list LinkedIn ad accounts", exc_info=e, extra={
-                "organization_id": organization_id
-            })
+            logger.error(f"Error getting LinkedIn campaigns: {e}")
             return []
-
-    # ========== CAMPAIGN MANAGEMENT ==========
-
-    async def create_campaign(
-        self,
-        organization_id: str,
-        account_id: str,
-        campaign_data: Dict[str, Any]
-    ) -> Optional[str]:
-        """
-        Create a new LinkedIn Ads campaign
-        """
+    
+    async def create_campaign(self, campaign_data: Dict[str, Any]) -> Optional[str]:
+        """Create LinkedIn campaign"""
         try:
-            access_token = await self.get_valid_access_token(organization_id, account_id)
-            if not access_token:
-                return None
-
-            headers = {
-                'Authorization': f'Bearer {access_token}',
-                'Content-Type': 'application/json'
-            }
-
-            # Format campaign data for LinkedIn API
-            campaign_payload = {
-                'account': f"urn:li:sponsoredAccount:{account_id}",
-                'name': campaign_data.get('name', 'New Campaign'),
-                'type': campaign_data.get('type', 'TEXT_AD'),
-                'status': campaign_data.get('status', 'PAUSED'),
-                'costType': campaign_data.get('cost_type', 'CPC'),
-                'dailyBudget': {
-                    'amount': campaign_data.get('daily_budget', 100),
-                    'currencyCode': campaign_data.get('currency', 'USD')
+            account = campaign_data.get("account_id", self.account_id)
+            url = f"/adAccounts/{account}/campaigns"
+            
+            # Prepare campaign payload
+            payload = {
+                "name": campaign_data["name"],
+                "status": campaign_data.get("status", "ACTIVE"),
+                "objective": campaign_data["objective"],
+                "budget": {
+                    "amount": campaign_data["budget"],
+                    "currency": campaign_data.get("currency", "USD")
                 },
-                'targetingCriteria': campaign_data.get('targeting', {}),
-                'objective': campaign_data.get('objective', 'WEBSITE_TRAFFIC')
+                "targetingCriteria": campaign_data.get("targeting", {}),
+                "startDate": campaign_data.get("start_date", datetime.utcnow().isoformat()),
+                "endDate": campaign_data.get("end_date")
             }
-
-            response = await self.client.post(
-                '/v2/adCampaignsV2',
-                headers=headers,
-                json=campaign_payload
-            )
+            
+            response = await self.client.post(url, json=payload)
             response.raise_for_status()
-
-            campaign_result = response.json()
-            campaign_id = campaign_result.get('id')
-
-            logger.info("LinkedIn campaign created", extra={
-                "organization_id": organization_id,
-                "account_id": account_id,
+            
+            result = response.json()
+            campaign_id = result.get("id")
+            
+            logger.info(f"Created LinkedIn campaign {campaign_id}", extra={
                 "campaign_id": campaign_id,
-                "campaign_name": campaign_data.get('name')
+                "name": campaign_data["name"],
+                "objective": campaign_data["objective"]
             })
-
+            
             return campaign_id
-
+            
         except Exception as e:
-            logger.error("Failed to create LinkedIn campaign", exc_info=e, extra={
-                "organization_id": organization_id,
-                "account_id": account_id
-            })
+            logger.error(f"Error creating LinkedIn campaign: {e}")
             return None
-
-    async def get_campaign_performance(
-        self,
-        organization_id: str,
-        account_id: str,
-        campaign_ids: List[str],
-        date_range: Dict[str, str]
-    ) -> List[Dict[str, Any]]:
-        """
-        Get detailed campaign performance data
-        """
+    
+    async def get_ads(self, campaign_id: str) -> List[LinkedInAd]:
+        """Get LinkedIn ads for campaign"""
         try:
-            access_token = await self.get_valid_access_token(organization_id, account_id)
-            if not access_token:
-                return []
-
-            headers = {'Authorization': f'Bearer {access_token}'}
-
-            # Build campaign filter
-            campaign_filter = " OR ".join([f"campaign=={cid}" for cid in campaign_ids])
-            if len(campaign_ids) > 1:
-                campaign_filter = f"({campaign_filter})"
-
-            # Query performance data
-            params = {
-                'q': 'analytics',
-                'pivot': 'CAMPAIGN',
-                'dateRange.start.day': date_range['start'].split('-')[2],
-                'dateRange.start.month': date_range['start'].split('-')[1],
-                'dateRange.start.year': date_range['start'].split('-')[0],
-                'dateRange.end.day': date_range['end'].split('-')[2],
-                'dateRange.end.month': date_range['end'].split('-')[1],
-                'dateRange.end.year': date_range['end'].split('-')[0],
-                'timeGranularity': 'DAILY',
-                'fields': 'impressions,clicks,costInLocalCurrency,conversions,externalWebsiteConversions',
-                'campaigns[0]': campaign_filter
-            }
-
-            response = await self.client.get(
-                f'/v2/adAnalyticsV2',
-                headers=headers,
-                params=params
-            )
+            url = f"/campaigns/{campaign_id}/ads"
+            
+            response = await self.client.get(url)
             response.raise_for_status()
-
-            analytics_data = response.json()
-            performance_data = []
-
-            for element in analytics_data.get('elements', []):
-                performance_data.append({
-                    "campaign_id": element.get('campaign'),
-                    "date": element.get('dateRange', {}).get('start'),
-                    "impressions": element.get('impressions', 0),
-                    "clicks": element.get('clicks', 0),
-                    "cost": element.get('costInLocalCurrency', 0),
-                    "conversions": element.get('conversions', 0),
-                    "external_conversions": element.get('externalWebsiteConversions', 0),
-                    "ctr": element.get('clicks', 0) / max(element.get('impressions', 1), 1),
-                    "cpc": element.get('costInLocalCurrency', 0) / max(element.get('clicks', 1), 1)
-                })
-
-            logger.info("LinkedIn campaign performance retrieved", extra={
-                "organization_id": organization_id,
-                "account_id": account_id,
-                "campaign_count": len(campaign_ids),
-                "data_points": len(performance_data)
+            
+            data = response.json()
+            ads = []
+            
+            for ad_data in data.get("elements", []):
+                ad = LinkedInAd(
+                    ad_id=ad_data.get("id"),
+                    campaign_id=campaign_id,
+                    name=ad_data.get("name"),
+                    status=ad_data.get("status"),
+                    format=ad_data.get("format"),
+                    creative=ad_data.get("creative", {}),
+                    targeting=ad_data.get("targetingCriteria", {}),
+                    bid_strategy=ad_data.get("bidStrategy", {}),
+                    created_at=datetime.fromisoformat(ad_data.get("created", "").replace("Z", "+00:00")),
+                    updated_at=datetime.fromisoformat(ad_data.get("lastModified", "").replace("Z", "+00:00"))
+                )
+                ads.append(ad)
+            
+            logger.info(f"Retrieved {len(ads)} LinkedIn ads for campaign {campaign_id}", extra={
+                "campaign_id": campaign_id,
+                "ad_count": len(ads)
             })
-
-            return performance_data
-
+            
+            return ads
+            
         except Exception as e:
-            logger.error("Failed to get LinkedIn campaign performance", exc_info=e, extra={
-                "organization_id": organization_id,
-                "account_id": account_id
-            })
+            logger.error(f"Error getting LinkedIn ads: {e}")
             return []
-
-    # ========== CREATIVE MANAGEMENT ==========
-
-    async def create_ad_creative(
-        self,
-        organization_id: str,
-        account_id: str,
-        creative_data: Dict[str, Any]
-    ) -> Optional[str]:
-        """
-        Create an ad creative
-        """
+    
+    async def create_ad(self, ad_data: Dict[str, Any]) -> Optional[str]:
+        """Create LinkedIn ad"""
         try:
-            access_token = await self.get_valid_access_token(organization_id, account_id)
-            if not access_token:
-                return None
-
-            headers = {
-                'Authorization': f'Bearer {access_token}',
-                'Content-Type': 'application/json'
+            campaign_id = ad_data["campaign_id"]
+            url = f"/campaigns/{campaign_id}/ads"
+            
+            # Prepare ad payload
+            payload = {
+                "name": ad_data["name"],
+                "status": ad_data.get("status", "ACTIVE"),
+                "format": ad_data["format"],
+                "creative": ad_data["creative"],
+                "targetingCriteria": ad_data.get("targeting", {}),
+                "bidStrategy": ad_data.get("bid_strategy", {})
             }
-
-            # Format creative data for LinkedIn API
-            creative_payload = {
-                'account': f"urn:li:sponsoredAccount:{account_id}",
-                'name': creative_data.get('name', 'New Creative'),
-                'type': creative_data.get('type', 'TEXT_AD'),
-                'status': creative_data.get('status', 'ACTIVE'),
-                'text': creative_data.get('text', ''),
-                'title': creative_data.get('title', ''),
-                'landingPageUrl': creative_data.get('landing_page_url', ''),
-                'callToAction': creative_data.get('call_to_action', 'LEARN_MORE')
+            
+            response = await self.client.post(url, json=payload)
+            response.raise_for_status()
+            
+            result = response.json()
+            ad_id = result.get("id")
+            
+            logger.info(f"Created LinkedIn ad {ad_id}", extra={
+                "ad_id": ad_id,
+                "campaign_id": campaign_id,
+                "name": ad_data["name"]
+            })
+            
+            return ad_id
+            
+        except Exception as e:
+            logger.error(f"Error creating LinkedIn ad: {e}")
+            return None
+    
+    async def get_campaign_insights(self, campaign_id: str, start_date: str, end_date: str) -> Dict[str, Any]:
+        """Get LinkedIn campaign insights"""
+        try:
+            url = f"/campaigns/{campaign_id}/insights"
+            params = {
+                "startDate": start_date,
+                "endDate": end_date,
+                "fields": "impressions,clicks,spend,conversions"
             }
-
-            # Add image if provided
-            if 'image_url' in creative_data:
-                creative_payload['image'] = {
-                    'url': creative_data['image_url']
+            
+            response = await self.client.get(url, params=params)
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            insights = {
+                "campaign_id": campaign_id,
+                "start_date": start_date,
+                "end_date": end_date,
+                "impressions": data.get("impressions", 0),
+                "clicks": data.get("clicks", 0),
+                "spend": data.get("spend", 0),
+                "conversions": data.get("conversions", 0),
+                "ctr": data.get("ctr", 0),
+                "cpc": data.get("cpc", 0),
+                "cpm": data.get("cpm", 0)
+            }
+            
+            logger.info(f"Retrieved LinkedIn campaign insights for {campaign_id}", extra={
+                "campaign_id": campaign_id,
+                "impressions": insights["impressions"],
+                "clicks": insights["clicks"],
+                "spend": insights["spend"]
+            })
+            
+            return insights
+            
+        except Exception as e:
+            logger.error(f"Error getting LinkedIn campaign insights: {e}")
+            return {}
+    
+    async def update_campaign_budget(self, campaign_id: str, budget: float) -> bool:
+        """Update LinkedIn campaign budget"""
+        try:
+            url = f"/campaigns/{campaign_id}"
+            
+            payload = {
+                "budget": {
+                    "amount": budget,
+                    "currency": "USD"
                 }
-
-            response = await self.client.post(
-                '/v2/adCreativesV2',
-                headers=headers,
-                json=creative_payload
-            )
+            }
+            
+            response = await self.client.patch(url, json=payload)
             response.raise_for_status()
-
-            creative_result = response.json()
-            creative_id = creative_result.get('id')
-
-            logger.info("LinkedIn creative created", extra={
-                "organization_id": organization_id,
-                "account_id": account_id,
-                "creative_id": creative_id,
-                "creative_name": creative_data.get('name')
+            
+            logger.info(f"Updated LinkedIn campaign budget for {campaign_id}", extra={
+                "campaign_id": campaign_id,
+                "new_budget": budget
             })
-
-            return creative_id
-
+            
+            return True
+            
         except Exception as e:
-            logger.error("Failed to create LinkedIn creative", exc_info=e, extra={
-                "organization_id": organization_id,
-                "account_id": account_id
-            })
-            return None
-
-    # ========== AUDIENCE MANAGEMENT ==========
-
-    async def create_audience(
-        self,
-        organization_id: str,
-        account_id: str,
-        audience_data: Dict[str, Any]
-    ) -> Optional[str]:
-        """
-        Create a custom audience for targeting
-        """
+            logger.error(f"Error updating LinkedIn campaign budget: {e}")
+            return False
+    
+    async def pause_campaign(self, campaign_id: str) -> bool:
+        """Pause LinkedIn campaign"""
         try:
-            access_token = await self.get_valid_access_token(organization_id, account_id)
-            if not access_token:
-                return None
-
-            headers = {
-                'Authorization': f'Bearer {access_token}',
-                'Content-Type': 'application/json'
+            url = f"/campaigns/{campaign_id}"
+            
+            payload = {
+                "status": "PAUSED"
             }
-
-            # Format audience data for LinkedIn API
-            audience_payload = {
-                'account': f"urn:li:sponsoredAccount:{account_id}",
-                'name': audience_data.get('name', 'New Audience'),
-                'audienceType': audience_data.get('type', 'CUSTOM'),
-                'audienceDefinition': audience_data.get('definition', {}),
-                'state': audience_data.get('state', 'ACTIVE')
-            }
-
-            response = await self.client.post(
-                '/v2/adAudiencesV2',
-                headers=headers,
-                json=audience_payload
-            )
+            
+            response = await self.client.patch(url, json=payload)
             response.raise_for_status()
-
-            audience_result = response.json()
-            audience_id = audience_result.get('id')
-
-            logger.info("LinkedIn audience created", extra={
-                "organization_id": organization_id,
-                "account_id": account_id,
-                "audience_id": audience_id,
-                "audience_name": audience_data.get('name')
+            
+            logger.info(f"Paused LinkedIn campaign {campaign_id}", extra={
+                "campaign_id": campaign_id
             })
-
-            return audience_id
-
+            
+            return True
+            
         except Exception as e:
-            logger.error("Failed to create LinkedIn audience", exc_info=e, extra={
-                "organization_id": organization_id,
-                "account_id": account_id
-            })
-            return None
-
-    # ========== CONVERSION TRACKING ==========
-
-    async def setup_conversion_tracking(
-        self,
-        organization_id: str,
-        account_id: str,
-        conversion_data: Dict[str, Any]
-    ) -> Optional[str]:
-        """
-        Set up conversion tracking
-        """
+            logger.error(f"Error pausing LinkedIn campaign: {e}")
+            return False
+    
+    async def resume_campaign(self, campaign_id: str) -> bool:
+        """Resume LinkedIn campaign"""
         try:
-            access_token = await self.get_valid_access_token(organization_id, account_id)
-            if not access_token:
-                return None
-
-            headers = {
-                'Authorization': f'Bearer {access_token}',
-                'Content-Type': 'application/json'
+            url = f"/campaigns/{campaign_id}"
+            
+            payload = {
+                "status": "ACTIVE"
             }
-
-            # Format conversion data for LinkedIn API
-            conversion_payload = {
-                'account': f"urn:li:sponsoredAccount:{account_id}",
-                'name': conversion_data.get('name', 'Website Conversion'),
-                'type': conversion_data.get('type', 'WEBSITE_CONVERSION'),
-                'postClickAttributionWindowSize': conversion_data.get('attribution_window', 30),
-                'viewThroughAttributionWindowSize': conversion_data.get('view_attribution_window', 1),
-                'conversionMethod': conversion_data.get('method', 'WEBSITE_PIXEL')
-            }
-
-            response = await self.client.post(
-                '/v2/adConversionEventsV2',
-                headers=headers,
-                json=conversion_payload
-            )
+            
+            response = await self.client.patch(url, json=payload)
             response.raise_for_status()
-
-            conversion_result = response.json()
-            conversion_id = conversion_result.get('id')
-
-            logger.info("LinkedIn conversion tracking setup", extra={
-                "organization_id": organization_id,
-                "account_id": account_id,
-                "conversion_id": conversion_id,
-                "conversion_name": conversion_data.get('name')
+            
+            logger.info(f"Resumed LinkedIn campaign {campaign_id}", extra={
+                "campaign_id": campaign_id
             })
-
-            return conversion_id
-
+            
+            return True
+            
         except Exception as e:
-            logger.error("Failed to setup LinkedIn conversion tracking", exc_info=e, extra={
-                "organization_id": organization_id,
-                "account_id": account_id
-            })
-            return None
-
-    # ========== UTILITY METHODS ==========
-
-    async def test_connection(self, organization_id: str, account_id: str) -> Dict[str, Any]:
-        """
-        Test connection to LinkedIn Ads API
-        """
+            logger.error(f"Error resuming LinkedIn campaign: {e}")
+            return False
+    
+    async def get_account_info(self) -> Dict[str, Any]:
+        """Get LinkedIn Ads account information"""
         try:
-            accounts = await self.list_ad_accounts(organization_id)
-            if accounts:
-                return {
-                    "status": "connected",
-                    "accounts_count": len(accounts),
-                    "first_account": accounts[0]["account_id"] if accounts else None
-                }
-            else:
-                return {"status": "no_accounts"}
-        except Exception as e:
-            return {
-                "status": "error",
-                "error": str(e)
+            url = f"/adAccounts/{self.account_id}"
+            
+            response = await self.client.get(url)
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            account_info = {
+                "account_id": data.get("id"),
+                "name": data.get("name"),
+                "status": data.get("status"),
+                "currency": data.get("currency"),
+                "timezone": data.get("timezone"),
+                "created_at": data.get("created"),
+                "updated_at": data.get("lastModified")
             }
+            
+            logger.info(f"Retrieved LinkedIn account info for {self.account_id}", extra={
+                "account_id": self.account_id,
+                "name": account_info["name"]
+            })
+            
+            return account_info
+            
+        except Exception as e:
+            logger.error(f"Error getting LinkedIn account info: {e}")
+            return {}
+    
+    async def close(self):
+        """Close HTTP client"""
+        await self.client.aclose()
 
-    def get_required_scopes(self) -> List[str]:
-        """Get required OAuth2 scopes"""
-        return [
-            'r_ads',
-            'r_ads_reporting',
-            'r_organization_social'
-        ]
-
-    def get_api_limits(self) -> Dict[str, Any]:
-        """Get LinkedIn Ads API limits information"""
-        return {
-            "requests_per_second": self.requests_per_second,
-            "requests_per_hour": self.requests_per_hour,
-            "daily_limit": self.daily_limit,
-            "rate_limit_type": "token_based",
-            "burst_allowed": False,
-            "cost_based_throttling": True,
-            "documentation_url": "https://docs.microsoft.com/en-us/linkedin/marketing/"
-        }
-
-    async def get_supported_objectives(self) -> List[str]:
-        """Get list of supported campaign objectives"""
-        return [
-            'WEBSITE_TRAFFIC',
-            'WEBSITE_CONVERSIONS',
-            'LEAD_GENERATION',
-            'BRAND_AWARENESS',
-            'VIDEO_VIEWS',
-            'ENGAGEMENT',
-            'JOB_APPLICANTS',
-            'JOB_APPLICATIONS'
-        ]
-
-# Global LinkedIn Ads integration instance
-linkedin_ads_integration = LinkedInAdsIntegration()
+class LinkedInAdsAdapter:
+    """LinkedIn Ads adapter for platform integrations manager"""
+    
+    def __init__(self):
+        self.client = None
+        self.credentials = None
+    
+    async def initialize(self, credentials: Dict[str, Any]):
+        """Initialize LinkedIn Ads client"""
+        self.credentials = credentials
+        self.client = LinkedInAdsClient(credentials)
+        
+        # Test authentication
+        is_authenticated = await self.client.authenticate()
+        if not is_authenticated:
+            raise ValueError("LinkedIn Ads authentication failed")
+        
+        logger.info("LinkedIn Ads adapter initialized successfully")
+    
+    async def get_campaigns(self, account_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get campaigns"""
+        if not self.client:
+            raise ValueError("LinkedIn Ads client not initialized")
+        
+        campaigns = await self.client.get_campaigns(account_id)
+        return [campaign.__dict__ for campaign in campaigns]
+    
+    async def create_campaign(self, campaign_data: Dict[str, Any]) -> Optional[str]:
+        """Create campaign"""
+        if not self.client:
+            raise ValueError("LinkedIn Ads client not initialized")
+        
+        return await self.client.create_campaign(campaign_data)
+    
+    async def get_ads(self, campaign_id: str) -> List[Dict[str, Any]]:
+        """Get ads for campaign"""
+        if not self.client:
+            raise ValueError("LinkedIn Ads client not initialized")
+        
+        ads = await self.client.get_ads(campaign_id)
+        return [ad.__dict__ for ad in ads]
+    
+    async def create_ad(self, ad_data: Dict[str, Any]) -> Optional[str]:
+        """Create ad"""
+        if not self.client:
+            raise ValueError("LinkedIn Ads client not initialized")
+        
+        return await self.client.create_ad(ad_data)
+    
+    async def get_insights(self, campaign_id: str, start_date: str, end_date: str) -> Dict[str, Any]:
+        """Get campaign insights"""
+        if not self.client:
+            raise ValueError("LinkedIn Ads client not initialized")
+        
+        return await self.client.get_campaign_insights(campaign_id, start_date, end_date)
+    
+    async def update_budget(self, campaign_id: str, budget: float) -> bool:
+        """Update campaign budget"""
+        if not self.client:
+            raise ValueError("LinkedIn Ads client not initialized")
+        
+        return await self.client.update_campaign_budget(campaign_id, budget)
+    
+    async def pause_campaign(self, campaign_id: str) -> bool:
+        """Pause campaign"""
+        if not self.client:
+            raise ValueError("LinkedIn Ads client not initialized")
+        
+        return await self.client.pause_campaign(campaign_id)
+    
+    async def resume_campaign(self, campaign_id: str) -> bool:
+        """Resume campaign"""
+        if not self.client:
+            raise ValueError("LinkedIn Ads client not initialized")
+        
+        return await self.client.resume_campaign(campaign_id)
+    
+    async def get_account_info(self) -> Dict[str, Any]:
+        """Get account information"""
+        if not self.client:
+            raise ValueError("LinkedIn Ads client not initialized")
+        
+        return await self.client.get_account_info()
+    
+    async def close(self):
+        """Close client"""
+        if self.client:
+            await self.client.close()

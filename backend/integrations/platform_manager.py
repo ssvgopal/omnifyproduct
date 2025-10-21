@@ -27,15 +27,19 @@ from services.cost_guardrails import cost_guardrails
 from integrations.google_ads.client import GoogleAdsAdapter
 from integrations.meta_ads.client import MetaAdsAdapter
 from integrations.gohighlevel.client import GoHighLevelAdapter
-# from integrations.linkedin.client import linkedin_ads_integration
-# from integrations.shopify.client import shopify_integration
-# from integrations.stripe.client import stripe_integration
+from integrations.linkedin.client import LinkedInAdsAdapter
+from integrations.tiktok.client import TikTokAdsAdapter
+from integrations.youtube.client import YouTubeAdsAdapter
+from integrations.shopify.client import ShopifyIntegration
+from integrations.stripe.client import StripeAdapter
 
 class Platform(Enum):
     """Supported advertising and marketing platforms"""
     GOOGLE_ADS = "google_ads"
     META_ADS = "meta_ads"
     LINKEDIN_ADS = "linkedin_ads"
+    TIKTOK_ADS = "tiktok_ads"
+    YOUTUBE_ADS = "youtube_ads"
     GOHIGHLEVEL = "gohighlevel"
     SHOPIFY = "shopify"
     STRIPE = "stripe"
@@ -50,10 +54,12 @@ class PlatformIntegrationsManager:
         self.platforms = {
             Platform.GOOGLE_ADS: GoogleAdsAdapter(),
             Platform.META_ADS: MetaAdsAdapter(),
+            Platform.LINKEDIN_ADS: LinkedInAdsAdapter(),
+            Platform.TIKTOK_ADS: TikTokAdsAdapter(),
+            Platform.YOUTUBE_ADS: YouTubeAdsAdapter(),
             Platform.GOHIGHLEVEL: GoHighLevelAdapter(),
-            # Platform.LINKEDIN_ADS: linkedin_ads_integration,
-            # Platform.SHOPIFY: shopify_integration,
-            # Platform.STRIPE: stripe_integration
+            Platform.SHOPIFY: ShopifyIntegration(),
+            Platform.STRIPE: StripeAdapter()
         }
 
         # Platform capabilities mapping
@@ -66,32 +72,42 @@ class PlatformIntegrationsManager:
                 "campaign_management", "audience_targeting", "creative_optimization",
                 "performance_analytics", "conversion_tracking", "ad_creation"
             ],
+            Platform.LINKEDIN_ADS: [
+                "campaign_management", "b2b_targeting", "professional_audiences",
+                "performance_analytics", "lead_generation", "sponsored_content"
+            ],
+            Platform.TIKTOK_ADS: [
+                "campaign_management", "video_ads", "audience_targeting",
+                "performance_analytics", "creative_optimization", "trending_content"
+            ],
+            Platform.YOUTUBE_ADS: [
+                "campaign_management", "video_advertising", "audience_targeting",
+                "performance_analytics", "video_optimization", "brand_awareness"
+            ],
             Platform.GOHIGHLEVEL: [
                 "contact_management", "workflow_automation", "email_campaigns",
                 "opportunity_tracking", "appointment_scheduling", "crm_integration"
+            ],
+            Platform.SHOPIFY: [
+                "product_management", "order_processing", "inventory_tracking",
+                "customer_management", "analytics_reporting", "ecommerce_automation"
+            ],
+            Platform.STRIPE: [
+                "payment_processing", "subscription_management", "invoice_generation",
+                "customer_billing", "refund_processing", "webhook_handling"
             ]
-            # Platform.LINKEDIN_ADS: [
-            #     "campaign_management", "b2b_targeting", "professional_audiences",
-            #     "performance_analytics", "lead_generation", "sponsored_content"
-            # ],
-            # Platform.SHOPIFY: [
-            #     "product_management", "order_processing", "inventory_tracking",
-            #     "customer_management", "analytics_reporting", "ecommerce_automation"
-            # ],
-            # Platform.STRIPE: [
-            #     "payment_processing", "subscription_management", "invoice_generation",
-            #     "customer_billing", "refund_processing", "webhook_handling"
-            # ]
         }
 
         # Cost tracking
         self.cost_tracking = {
             Platform.GOOGLE_ADS: {"cost_per_request": 0.001, "monthly_free": 10000},
             Platform.META_ADS: {"cost_per_request": 0.001, "monthly_free": 200000},
-            Platform.GOHIGHLEVEL: {"cost_per_request": 0.0005, "monthly_free": 100000}
-            # Platform.LINKEDIN_ADS: {"cost_per_request": 0.002, "monthly_free": 50000},
-            # Platform.SHOPIFY: {"cost_per_request": 0.0001, "monthly_free": 1000000},
-            # Platform.STRIPE: {"cost_per_request": 0.0001, "monthly_free": 1000000}
+            Platform.LINKEDIN_ADS: {"cost_per_request": 0.002, "monthly_free": 50000},
+            Platform.TIKTOK_ADS: {"cost_per_request": 0.001, "monthly_free": 100000},
+            Platform.YOUTUBE_ADS: {"cost_per_request": 0.001, "monthly_free": 10000},
+            Platform.GOHIGHLEVEL: {"cost_per_request": 0.0005, "monthly_free": 100000},
+            Platform.SHOPIFY: {"cost_per_request": 0.0001, "monthly_free": 1000000},
+            Platform.STRIPE: {"cost_per_request": 0.029, "monthly_free": 0}  # 2.9% + 30¢ per transaction
         }
 
         logger.info("Platform integrations manager initialized", extra={
