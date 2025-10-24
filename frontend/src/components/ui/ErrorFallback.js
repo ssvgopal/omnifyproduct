@@ -78,3 +78,6 @@ const ErrorFallback = ({ error, resetErrorBoundary, errorInfo }) => {
 };
 
 export default ErrorFallback;
+
+
+

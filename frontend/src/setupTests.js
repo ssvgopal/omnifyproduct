@@ -1,4 +1,9 @@
 import '@testing-library/jest-dom';
+import { TextEncoder, TextDecoder } from 'text-encoding';
+
+// Mock TextEncoder and TextDecoder for Node.js environment
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
 
 // Mock window.matchMedia for components that use responsive design
 Object.defineProperty(window, 'matchMedia', {

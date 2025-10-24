@@ -277,3 +277,6 @@ async function removePendingAction(actionId) {
   // Remove action from IndexedDB
   console.log('Removing pending action:', actionId);
 }
+
+
+

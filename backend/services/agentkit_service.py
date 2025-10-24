@@ -99,12 +99,12 @@ class AgentKitService:
         execution_id = str(uuid.uuid4())
         started_at = datetime.utcnow()
         
+        # Get agent configuration first
+        agent = await self.get_agent(request.agent_id)
+        if not agent:
+            raise ValueError(f"Agent {request.agent_id} not found")
+        
         try:
-            # Get agent configuration
-            agent = await self.get_agent(request.agent_id)
-            if not agent:
-                raise ValueError(f"Agent {request.agent_id} not found")
-            
             # Create audit log
             await self._create_audit_log(
                 organization_id=request.organization_id,
@@ -174,7 +174,8 @@ class AgentKitService:
                 execution_id=execution_id,
                 agent_id=request.agent_id,
                 status=AgentStatus.FAILED,
-                error=str(e)
+                error=str(e),
+                started_at=started_at
             )
     
     # ========== WORKFLOW MANAGEMENT ==========
@@ -187,7 +188,7 @@ class AgentKitService:
                 name=workflow.name,
                 description=workflow.description,
                 steps=workflow.steps,
-                config=workflow.config
+                config={}  # Default empty config
             )
             workflow.agentkit_workflow_id = agentkit_response["workflow_id"]
 

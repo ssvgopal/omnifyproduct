@@ -120,8 +120,8 @@ class PlatformIntegrationsManager:
         try:
             for platform_enum, adapter in self.platforms.items():
                 # Get platform credentials from secrets manager
-                credentials = await production_secrets_manager.get_platform_credentials(
-                    organization_id, platform_enum.value
+                credentials = await production_secrets_manager.get_secret(
+                    f"platform_creds_{organization_id}_{platform_enum.value}"
                 )
                 
                 if credentials:
