@@ -784,7 +784,7 @@ const PredictiveIntelligenceDashboard = () => {
                       </div>
                       <ul className="text-sm text-gray-700 space-y-1">
                         <li>• Increase budget for top-performing campaigns by 25%</li>
-                        <li>• Pause campaigns with ROAS < 1.5 for optimization</li>
+                        <li>• Pause campaigns with ROAS &lt; 1.5 for optimization</li>
                         <li>• Update creative assets for underperforming campaigns</li>
                       </ul>
                     </div>
