@@ -52,7 +52,7 @@ class MetaAdsClient:
             await self.session.close()
     
     async def _make_request(self, method: str, endpoint: str, data: Dict[str, Any] = None, params: Dict[str, Any] = None) -> Dict[str, Any]:
-        """Make HTTP request to Meta Ads API"""
+        """Make HTTP request to Meta Ads API with retry and circuit breaker"""
         if not self.session:
             raise RuntimeError("Client not initialized. Use async context manager.")
         
@@ -63,18 +63,42 @@ class MetaAdsClient:
             params = {}
         params['access_token'] = self.config.access_token
         
-        try:
+        # Use retry logic
+        from core.retry_logic import retry_http_request, RetryConfig
+        
+        retry_config = RetryConfig(
+            max_attempts=3,
+            initial_delay=1.0,
+            max_delay=30.0,
+            retryable_status_codes=[429, 500, 502, 503, 504]
+        )
+        
+        async def request_func():
             async with self.session.request(method, url, json=data, params=params) as response:
                 response_data = await response.json()
                 
                 if response.status >= 400:
                     logger.error(f"Meta Ads API error: {response.status} - {response_data}")
-                    raise Exception(f"Meta Ads API error: {response.status} - {response_data}")
+                    # Raise exception that will be caught by retry logic
+                    error = aiohttp.ClientResponseError(
+                        request_info=response.request_info,
+                        history=response.history,
+                        status=response.status,
+                        message=str(response_data)
+                    )
+                    error.status = response.status
+                    raise error
                 
                 return response_data
-                
-        except aiohttp.ClientError as e:
-            logger.error(f"Meta Ads API request failed: {e}")
+        
+        try:
+            return await retry_http_request(
+                request_func,
+                retry_config,
+                f"Meta Ads API {method} {endpoint}"
+            )
+        except Exception as e:
+            logger.error(f"Meta Ads API request failed after retries: {e}")
             raise Exception(f"Meta Ads API request failed: {e}")
     
     async def create_campaign(self, campaign_data: Dict[str, Any]) -> Dict[str, Any]:

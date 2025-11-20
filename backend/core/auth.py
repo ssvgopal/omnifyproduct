@@ -22,7 +22,19 @@ def get_auth_service(db: AsyncIOMotorDatabase = Depends()) -> AuthService:
     global auth_service_instance
     
     if auth_service_instance is None:
-        jwt_secret = os.environ.get('JWT_SECRET_KEY', 'omnify-cloud-connect-secret-key-change-in-production')
+        from core.secrets_manager import get_required_secret
+        
+        # Get JWT secret from secrets manager (required, no default)
+        try:
+            jwt_secret = get_required_secret('JWT_SECRET_KEY')
+        except ValueError:
+            # Fallback for development only
+            jwt_secret = os.environ.get('JWT_SECRET_KEY')
+            if not jwt_secret:
+                raise ValueError(
+                    "JWT_SECRET_KEY is required. Set it in environment variables or secrets manager."
+                )
+        
         jwt_algorithm = os.environ.get('JWT_ALGORITHM', 'HS256')
         auth_service_instance = AuthService(db, jwt_secret, jwt_algorithm)
     

@@ -81,7 +81,7 @@ class GoogleAdsClient:
             raise
     
     async def _make_request(self, method: str, endpoint: str, data: Dict[str, Any] = None) -> Dict[str, Any]:
-        """Make HTTP request to Google Ads API"""
+        """Make HTTP request to Google Ads API with retry and circuit breaker"""
         if not self.session:
             raise RuntimeError("Client not initialized. Use async context manager.")
         
@@ -97,18 +97,43 @@ class GoogleAdsClient:
             "login-customer-id": self.config.customer_id
         }
         
-        try:
+        # Use resilient client with retry and circuit breaker
+        from core.resilient_client import ResilientHTTPClient, RetryConfig, CircuitBreakerConfig
+        from core.retry_logic import retry_http_request
+        
+        retry_config = RetryConfig(
+            max_attempts=3,
+            initial_delay=1.0,
+            max_delay=30.0,
+            retryable_status_codes=[429, 500, 502, 503, 504]
+        )
+        
+        async def request_func():
             async with self.session.request(method, url, json=data, headers=headers) as response:
                 response_data = await response.json()
                 
                 if response.status >= 400:
                     logger.error(f"Google Ads API error: {response.status} - {response_data}")
-                    raise Exception(f"Google Ads API error: {response.status} - {response_data}")
+                    # Raise exception that will be caught by retry logic
+                    error = aiohttp.ClientResponseError(
+                        request_info=response.request_info,
+                        history=response.history,
+                        status=response.status,
+                        message=str(response_data)
+                    )
+                    error.status = response.status  # Add status for retry logic
+                    raise error
                 
                 return response_data
-                
-        except aiohttp.ClientError as e:
-            logger.error(f"Google Ads API request failed: {e}")
+        
+        try:
+            return await retry_http_request(
+                request_func,
+                retry_config,
+                f"Google Ads API {method} {endpoint}"
+            )
+        except Exception as e:
+            logger.error(f"Google Ads API request failed after retries: {e}")
             raise Exception(f"Google Ads API request failed: {e}")
     
     async def create_campaign(self, campaign_data: Dict[str, Any]) -> Dict[str, Any]:

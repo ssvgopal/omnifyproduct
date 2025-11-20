@@ -31,9 +31,9 @@ AGENTKIT_CONFIG = {
     "max_concurrent_agents": int(os.getenv("MAX_CONCURRENT_AGENTS", "10")),
     "agent_timeout_seconds": int(os.getenv("AGENT_TIMEOUT_SECONDS", "300")),
     "enable_tracing": os.getenv("AGENTKIT_TRACING_ENABLED", "true").lower() == "true",
-    "request_timeout": 30.0,
-    "max_retries": 3,
-    "retry_backoff": 1.0
+    "request_timeout": float(os.getenv("AGENTKIT_REQUEST_TIMEOUT", "30.0")),
+    "max_retries": int(os.getenv("AGENTKIT_MAX_RETRIES", "3")),
+    "retry_backoff": float(os.getenv("AGENTKIT_RETRY_BACKOFF", "1.0"))
 }
 
 class RealAgentKitAdapter:
@@ -60,15 +60,15 @@ class RealAgentKitAdapter:
         # Circuit breaker for AgentKit API
         self.circuit_breaker = get_circuit_breaker("agentkit_api")
 
-        # Initialize built-in enterprise compliance
+        # Initialize built-in enterprise compliance (from environment variables)
         self.compliance_config = {
-            "soc2_enabled": True,
-            "iso27001_enabled": True,
-            "audit_logging": True,
-            "data_retention_days": 2555,  # 7 years for SOC 2
-            "encryption_enabled": True,
-            "gdpr_compliant": True,
-            "hipaa_compliant": False  # Not healthcare
+            "soc2_enabled": os.getenv("COMPLIANCE_SOC2_ENABLED", "true").lower() == "true",
+            "iso27001_enabled": os.getenv("COMPLIANCE_ISO27001_ENABLED", "true").lower() == "true",
+            "audit_logging": os.getenv("COMPLIANCE_AUDIT_LOGGING", "true").lower() == "true",
+            "data_retention_days": int(os.getenv("COMPLIANCE_DATA_RETENTION_DAYS", "2555")),  # 7 years for SOC 2
+            "encryption_enabled": os.getenv("COMPLIANCE_ENCRYPTION_ENABLED", "true").lower() == "true",
+            "gdpr_compliant": os.getenv("COMPLIANCE_GDPR_ENABLED", "true").lower() == "true",
+            "hipaa_compliant": os.getenv("COMPLIANCE_HIPAA_ENABLED", "false").lower() == "true"  # Not healthcare by default
         }
 
         logger.info("Real AgentKit adapter initialized", extra={

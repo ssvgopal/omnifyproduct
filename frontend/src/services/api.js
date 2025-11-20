@@ -406,6 +406,61 @@ class OmnifyAPI {
     }
   }
 
+  // ========== INTEGRATION OAUTH APIs ==========
+
+  async getIntegrationAuthUrl(platform) {
+    try {
+      const response = await this.client.get(`/integrations/${platform}/oauth/authorize`);
+      return response.data;
+    } catch (error) {
+      logger.error(`Failed to get ${platform} auth URL`, error);
+      throw error;
+    }
+  }
+
+  async handleIntegrationCallback(platform, code, state) {
+    try {
+      const response = await this.client.post(`/integrations/${platform}/oauth/callback`, {
+        code,
+        state
+      });
+      return response.data;
+    } catch (error) {
+      logger.error(`Failed to handle ${platform} callback`, error);
+      throw error;
+    }
+  }
+
+  async refreshIntegrationToken(platform) {
+    try {
+      const response = await this.client.post(`/integrations/${platform}/oauth/refresh`);
+      return response.data;
+    } catch (error) {
+      logger.error(`Failed to refresh ${platform} token`, error);
+      throw error;
+    }
+  }
+
+  async disconnectIntegration(platform) {
+    try {
+      const response = await this.client.delete(`/integrations/${platform}/oauth/disconnect`);
+      return response.data;
+    } catch (error) {
+      logger.error(`Failed to disconnect ${platform}`, error);
+      throw error;
+    }
+  }
+
+  async getIntegrationStatus(platform) {
+    try {
+      const response = await this.client.get(`/integrations/${platform}/status`);
+      return response.data;
+    } catch (error) {
+      // Return disconnected status if endpoint doesn't exist
+      return { connected: false };
+    }
+  }
+
   // ========== HEALTH CHECK ==========
 
   async getHealthStatus() {

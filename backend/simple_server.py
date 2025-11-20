@@ -44,5 +44,7 @@ async def api_health():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
-    print(f"Starting simple health check server on port {port}...")
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Starting simple health check server on port {port}...")
     uvicorn.run(app, host="localhost", port=port, log_level="info")

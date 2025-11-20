@@ -824,6 +824,6 @@ if __name__ == "__main__":
         db_name = os.getenv("DB_NAME", "omnify_cloud")
         
         db = await initialize_database(mongo_url, db_name)
-        print("Database initialized successfully")
+        logger.info("Database initialized successfully")
     
     asyncio.run(main())

@@ -125,18 +125,20 @@ class HumanExpertInterventionSystem:
         self.intervention_workflows: Dict[str, InterventionWorkflow] = {}
         self.expert_decisions: Dict[str, ExpertDecision] = {}
         
-        # Configuration
-        self.default_sla_minutes = 240  # 4 hours default SLA
-        self.escalation_timeout_minutes = 60  # Escalate after 1 hour
-        self.max_retries = 3  # Maximum retries before escalation
+        # Configuration (from environment variables with defaults)
+        self.default_sla_minutes = int(os.getenv('EXPERT_DEFAULT_SLA_MINUTES', '240'))  # 4 hours default SLA
+        self.escalation_timeout_minutes = int(os.getenv('EXPERT_ESCALATION_TIMEOUT_MINUTES', '60'))  # Escalate after 1 hour
+        self.max_retries = int(os.getenv('EXPERT_MAX_RETRIES', '3'))  # Maximum retries before escalation
         
         # Expert availability tracking
         self.expert_availability = {}
         self.expert_load_balancing = True
         
-        # Notification settings
-        self.notification_channels = ['email', 'slack', 'dashboard']
-        self.urgent_notification_channels = ['email', 'phone', 'slack']
+        # Notification settings (from environment variables)
+        notification_channels_str = os.getenv('EXPERT_NOTIFICATION_CHANNELS', 'email,slack,dashboard')
+        urgent_channels_str = os.getenv('EXPERT_URGENT_CHANNELS', 'email,phone,slack')
+        self.notification_channels = [ch.strip() for ch in notification_channels_str.split(',')]
+        self.urgent_notification_channels = [ch.strip() for ch in urgent_channels_str.split(',')]
 
     async def initialize_system(self):
         """Initialize the human expert intervention system"""

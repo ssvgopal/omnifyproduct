@@ -148,6 +148,16 @@ async def lifespan(app: FastAPI):
 
     # Initialize Celery services
     init_celery_services(db, revolutionary_agentkit)
+    
+    # Initialize encryption service for MFA
+    from core.encryption import get_encryption_manager
+    encryption_manager = get_encryption_manager()
+    logger.info("Encryption service initialized")
+    
+    # Initialize secure database client for security middleware
+    from middleware.database_security_middleware import set_secure_db
+    set_secure_db(db)
+    logger.info("Database security middleware initialized")
     logger.info("Celery services initialized")
 
     # Initialize OIDC Authentication Service
@@ -317,6 +327,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add security and monitoring middleware (order matters)
+# Error handler must be first to catch all exceptions
+from middleware.error_handler_middleware import ErrorHandlerMiddleware
+from middleware.metrics_middleware import MetricsMiddleware
+from middleware.database_security_middleware import DatabaseSecurityMiddleware
+
+# Add middleware (database security uses global instance set in lifespan)
+app.add_middleware(ErrorHandlerMiddleware)
+app.add_middleware(MetricsMiddleware)
+
+# Rate limiting middleware
+from middleware.rate_limit_middleware import RateLimitMiddleware
+app.add_middleware(RateLimitMiddleware)
+
+app.add_middleware(DatabaseSecurityMiddleware)
+
 
 # ========== LOW-COST MODE MIDDLEWARE ==========
 @app.middleware("http")
@@ -412,8 +438,41 @@ def get_db():
     return db
 
 
+# Import MFA, RBAC, Email Verification, Session, Integration, Brain Module, and Metrics routes
+from api.mfa_routes import router as mfa_router
+from api.rbac_routes import router as rbac_router
+from api.email_verification_routes import router as email_verification_router
+from api.session_routes import router as session_router
+from api.google_ads_oauth_routes import router as google_ads_oauth_router
+from api.meta_ads_oauth_routes import router as meta_ads_oauth_router
+from api.brain_modules_routes import router as brain_modules_router
+from api.metrics_routes import router as metrics_router
+
+# Import middleware
+from middleware.database_security_middleware import DatabaseSecurityMiddleware
+from middleware.metrics_middleware import MetricsMiddleware
+
 # Include routers
 app.include_router(auth_router)
+app.include_router(mfa_router)  # MFA routes
+app.include_router(rbac_router)  # RBAC routes
+app.include_router(email_verification_router)  # Email verification routes
+app.include_router(session_router)  # Session management routes
+app.include_router(google_ads_oauth_router)  # Google Ads OAuth routes
+app.include_router(meta_ads_oauth_router)  # Meta Ads OAuth routes
+app.include_router(brain_modules_router)  # Brain modules routes (ORACLE, EYES, VOICE)
+app.include_router(metrics_router)  # Prometheus metrics routes
+
+# Versioned API routes (v1)
+try:
+    from api.v1.campaign_routes import router as v1_campaign_router
+    app.include_router(v1_campaign_router)
+except ImportError:
+    pass  # v1 routes not available yet
+
+# Add middleware (order matters - metrics first, then security)
+app.add_middleware(MetricsMiddleware)
+app.add_middleware(DatabaseSecurityMiddleware, db=db)
 app.include_router(agentkit_router)
 app.include_router(kong_router)
 app.include_router(temporal_router)

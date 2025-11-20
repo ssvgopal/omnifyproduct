@@ -7,6 +7,7 @@ import ErrorFallback from '@/components/ui/ErrorFallback';
 // Lazy load main pages
 const Home = lazy(() => import('@/pages/Home'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
+const Demo = lazy(() => import('@/pages/Demo'));
 const Agents = lazy(() => import('@/pages/Agents'));
 const Workflows = lazy(() => import('@/pages/Workflows'));
 const Analytics = lazy(() => import('@/pages/Analytics'));
@@ -55,6 +56,7 @@ const AppRoutes = () => {
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/demo" element={<Demo />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/agents" element={<Agents />} />
             <Route path="/workflows" element={<Workflows />} />
