@@ -3,6 +3,9 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 import AdminDashboard from './components/Admin/AdminDashboard';
 import Home from '@/pages/Home';
+import Signup from '@/pages/Signup';
+import VerifyEmail from '@/pages/VerifyEmail';
+import CookieConsent from '@/components/Legal/CookieConsent';
 import { logger } from './services/logger';
 import '@/App.css';
 
@@ -52,7 +55,10 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
           </Routes>
+          <CookieConsent />
         </BrowserRouter>
       </div>
     </ErrorBoundary>

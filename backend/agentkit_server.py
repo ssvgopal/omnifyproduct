@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 # Import routes
 from api.agentkit_routes import router as agentkit_router
 from api.auth_routes import router as auth_router
+from api.legal_routes import router as legal_router
 from api.kong_routes import router as kong_router
 from api.temporal_routes import router as temporal_router
 from api.airbyte_routes import router as airbyte_router
@@ -88,6 +89,11 @@ async def lifespan(app: FastAPI):
 
     # Startup
     logger.info("🚀 Starting Omnify Cloud Connect (AgentKit Hybrid)...")
+
+    # Validate configuration
+    from core.config_validator import ConfigValidator
+    logger.info("Validating environment configuration...")
+    ConfigValidator.validate_and_exit(exit_on_critical=True)
 
     # Connect to MongoDB
     mongo_url = os.environ.get('MONGO_URL')
@@ -468,6 +474,7 @@ from middleware.metrics_middleware import MetricsMiddleware
 
 # Include routers
 app.include_router(auth_router)
+app.include_router(legal_router)  # Legal documents routes (Terms, Privacy, Cookie Policy)
 app.include_router(mfa_router)  # MFA routes
 app.include_router(rbac_router)  # RBAC routes
 app.include_router(email_verification_router)  # Email verification routes
