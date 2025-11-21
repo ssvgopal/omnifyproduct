@@ -445,9 +445,16 @@ from api.email_verification_routes import router as email_verification_router
 from api.session_routes import router as session_router
 from api.google_ads_oauth_routes import router as google_ads_oauth_router
 from api.meta_ads_oauth_routes import router as meta_ads_oauth_router
+from api.linkedin_ads_oauth_routes import router as linkedin_ads_oauth_router
+from api.tiktok_ads_oauth_routes import router as tiktok_ads_oauth_router
+from api.youtube_ads_oauth_routes import router as youtube_ads_oauth_router
+from api.gohighlevel_oauth_routes import router as gohighlevel_oauth_router
+from api.shopify_oauth_routes import router as shopify_oauth_router
+from api.stripe_oauth_routes import router as stripe_oauth_router
 from api.brain_modules_routes import router as brain_modules_router
 from api.metrics_routes import router as metrics_router
 from api.dashboard_routes import router as dashboard_router
+from api.workflow_routes import router as workflow_router
 
 # Import middleware
 from middleware.database_security_middleware import DatabaseSecurityMiddleware
@@ -461,6 +468,12 @@ app.include_router(email_verification_router)  # Email verification routes
 app.include_router(session_router)  # Session management routes
 app.include_router(google_ads_oauth_router)  # Google Ads OAuth routes
 app.include_router(meta_ads_oauth_router)  # Meta Ads OAuth routes
+app.include_router(linkedin_ads_oauth_router)  # LinkedIn Ads OAuth routes
+app.include_router(tiktok_ads_oauth_router)  # TikTok Ads OAuth routes
+app.include_router(youtube_ads_oauth_router)  # YouTube Ads OAuth routes
+app.include_router(gohighlevel_oauth_router)  # GoHighLevel OAuth routes
+app.include_router(shopify_oauth_router)  # Shopify OAuth routes
+app.include_router(stripe_oauth_router)  # Stripe OAuth routes
 app.include_router(brain_modules_router)  # Brain modules routes (ORACLE, EYES, VOICE)
 app.include_router(metrics_router)  # Prometheus metrics routes
 app.include_router(dashboard_router)  # Dashboard statistics routes
