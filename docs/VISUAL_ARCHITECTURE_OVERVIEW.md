@@ -11,7 +11,23 @@
 │   FRONTEND       │    │   API GATEWAY    │    │  BUSINESS LOGIC  │    │   INTEGRATIONS  │
 │                 │    │                 │    │                 │    │                 │
 │  ┌─────────────┐ │    │  ┌─────────────┐ │    │  ┌─────────────┐ │    │  ┌─────────────┐ │
-│  │React Dashboard│ │    │  │FastAPI Gateway│ │    │  │AgentKit Agents│ │    │  │GoHighLevel API│ │
+│  │React Dashboard│ │    │  │FastAPI Gateway│ │    │  │AgentKit Agents│ │    │  │TripleWhale API│ │
+│  │(Primary)      │ │
+│  └─────────────┘ │
+│                 │
+│  ┌─────────────┐ │
+│  │HubSpot API  │ │
+│  │(Secondary)  │ │
+│  └─────────────┘ │
+│                 │
+│  ┌─────────────┐ │
+│  │Klaviyo API  │ │
+│  │(Tertiary)   │ │
+│  └─────────────┘ │
+│                 │
+│  ┌─────────────┐ │
+│  │GoHighLevel  │ │
+│  │API (Low Pri)│ │
 │  └─────────────┘ │    │  └─────────────┘ │    │  └─────────────┘ │    │  └─────────────┘ │
 │                 │    │                 │    │                 │    │                 │
 │  ┌─────────────┐ │    │  ┌─────────────┐ │    │  ┌─────────────┐ │    │  ┌─────────────┐ │
@@ -54,7 +70,7 @@
 │                              USER ONBOARDING FLOW                              │
 └─────────────────────────────────────────────────────────────────────────────────┘
 
-    User                    Frontend                Backend                GoHighLevel
+    User                    Frontend                Backend                TripleWhale/HubSpot/Klaviyo
      │                         │                      │                        │
      │ 1. Visit Dashboard      │                      │                        │
      ├────────────────────────►│                      │                        │

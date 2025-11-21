@@ -121,10 +121,14 @@ frontend/src/components/
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────┐ │
 │  │ Advertising │  │     CRM     │  │ E-commerce  │  │ Payment  │ │
 │  │ Platforms   │  │             │  │             │  │         │ │
-│  │ • Google Ads│  │ • GoHighL   │  │ • Shopify   │  │ • Stripe │ │
-│  │ • Meta Ads  │  │ • HubSpot   │  │ • WooCommerce│ │ • PayPal │ │
-│  │ • LinkedIn  │  │ • Salesforce│  │ • BigCommerce│ │ • Square │ │
-│  │ • TikTok    │  │ • Pipedrive │  │ • Magento   │  │ • Auth   │ │
+│  │ • Google Ads│  │ • TripleWhale│ │ • Shopify   │  │ • Stripe │ │
+│  │ • Meta Ads  │  │ (Primary)    │ │ • WooCommerce│ │ • PayPal │ │
+│  │ • LinkedIn  │  │ • HubSpot    │ │ • BigCommerce│ │ • Square │ │
+│  │ • TikTok    │  │ (Secondary)  │ │ • Magento   │  │ • Auth   │ │
+│  │ • YouTube   │  │ • Klaviyo    │ │             │  │         │ │
+│  │             │  │ (Tertiary)   │ │             │  │         │ │
+│  │             │  │ • GoHighL    │ │             │  │         │ │
+│  │             │  │ (Low Priority)│             │  │         │ │
 │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────┘ │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -297,7 +301,10 @@ frontend/src/components/
 **56 Backend Services by Category**:
 - **AgentKit Services** (4): Real API integration, agent management
 - **Machine Learning** (3): Predictive models, forecasting, analytics
-- **Platform Integrations** (8): Real OAuth2 API connections
+- **Platform Integrations** (11): Real OAuth2/API key connections
+  - **High Priority**: TripleWhale, HubSpot, Klaviyo
+  - **Low Priority**: GoHighLevel (maintained)
+  - **Other**: Google Ads, Meta Ads, LinkedIn, TikTok, YouTube, Shopify, Stripe
 - **Magic Features** (8): Revolutionary customer experience
 - **Security & Compliance** (6): Enterprise security, audit logging
 - **Infrastructure** (9): Production systems, monitoring, caching
@@ -306,7 +313,10 @@ frontend/src/components/
 ### **B. API Architecture Details**
 **33 Route Modules**:
 - **AgentKit APIs** (4 modules): Agent lifecycle, execution, workflows
-- **Platform APIs** (8 modules): Integration management, data sync
+- **Platform APIs** (11 modules): Integration management, data sync
+  - **High Priority**: TripleWhale, HubSpot, Klaviyo
+  - **Low Priority**: GoHighLevel
+  - **Other**: Google Ads, Meta Ads, LinkedIn, TikTok, YouTube, Shopify, Stripe
 - **Analytics APIs** (5 modules): Reporting, metrics, dashboards
 - **Management APIs** (6 modules): Users, campaigns, system management
 - **Magic Feature APIs** (8 modules): Onboarding, predictive, expert intervention

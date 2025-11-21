@@ -32,6 +32,9 @@ from integrations.tiktok.client import TikTokAdsAdapter
 from integrations.youtube.client import YouTubeAdsAdapter
 from integrations.shopify.client import ShopifyIntegration
 from integrations.stripe.client import StripeAdapter
+from integrations.triplewhale.client import TripleWhaleAdapter
+from integrations.hubspot.client import HubSpotAdapter
+from integrations.klaviyo.client import KlaviyoAdapter
 
 class Platform(Enum):
     """Supported advertising and marketing platforms"""
@@ -40,7 +43,10 @@ class Platform(Enum):
     LINKEDIN_ADS = "linkedin_ads"
     TIKTOK_ADS = "tiktok_ads"
     YOUTUBE_ADS = "youtube_ads"
-    GOHIGHLEVEL = "gohighlevel"
+    GOHIGHLEVEL = "gohighlevel"  # LOW PRIORITY - Prefer TripleWhale/HubSpot/Klaviyo for DTC brands
+    TRIPLEWHALE = "triplewhale"  # PRIMARY: Attribution & Analytics for DTC brands
+    HUBSPOT = "hubspot"  # SECONDARY: CRM & Marketing Automation
+    KLAVIYO = "klaviyo"  # TERTIARY: Lifecycle Marketing & Retention
     SHOPIFY = "shopify"
     STRIPE = "stripe"
     GOOGLE_ANALYTICS = "google_analytics"
@@ -57,7 +63,10 @@ class PlatformIntegrationsManager:
             Platform.LINKEDIN_ADS: LinkedInAdsAdapter(),
             Platform.TIKTOK_ADS: TikTokAdsAdapter(),
             Platform.YOUTUBE_ADS: YouTubeAdsAdapter(),
-            Platform.GOHIGHLEVEL: GoHighLevelAdapter(),
+            Platform.GOHIGHLEVEL: GoHighLevelAdapter(),  # LOW PRIORITY - kept for backward compatibility
+            Platform.TRIPLEWHALE: TripleWhaleAdapter(),  # PRIMARY replacement
+            Platform.HUBSPOT: HubSpotAdapter(),  # SECONDARY replacement
+            Platform.KLAVIYO: KlaviyoAdapter(),  # TERTIARY replacement
             Platform.SHOPIFY: ShopifyIntegration(),
             Platform.STRIPE: StripeAdapter()
         }
@@ -87,6 +96,21 @@ class PlatformIntegrationsManager:
             Platform.GOHIGHLEVEL: [
                 "contact_management", "workflow_automation", "email_campaigns",
                 "opportunity_tracking", "appointment_scheduling", "crm_integration"
+            ],  # LOW PRIORITY - SMB/agency focused, not ideal for mid-market DTC
+            Platform.TRIPLEWHALE: [
+                "attribution_analytics", "multi_touch_attribution", "revenue_tracking",
+                "roas_calculation", "creative_performance", "campaign_analytics",
+                "shopify_integration", "cross_channel_analytics"
+            ],
+            Platform.HUBSPOT: [
+                "contact_management", "crm", "deal_pipeline", "marketing_automation",
+                "workflow_automation", "campaign_management", "sales_automation",
+                "reporting_analytics", "email_marketing"
+            ],
+            Platform.KLAVIYO: [
+                "email_marketing", "sms_marketing", "lifecycle_automation",
+                "customer_segmentation", "flow_automation", "campaign_management",
+                "analytics_reporting", "shopify_integration"
             ],
             Platform.SHOPIFY: [
                 "product_management", "order_processing", "inventory_tracking",
@@ -105,7 +129,10 @@ class PlatformIntegrationsManager:
             Platform.LINKEDIN_ADS: {"cost_per_request": 0.002, "monthly_free": 50000},
             Platform.TIKTOK_ADS: {"cost_per_request": 0.001, "monthly_free": 100000},
             Platform.YOUTUBE_ADS: {"cost_per_request": 0.001, "monthly_free": 10000},
-            Platform.GOHIGHLEVEL: {"cost_per_request": 0.0005, "monthly_free": 100000},
+            Platform.GOHIGHLEVEL: {"cost_per_request": 0.0005, "monthly_free": 100000},  # LOW PRIORITY
+            Platform.TRIPLEWHALE: {"cost_per_request": 0.0001, "monthly_free": 1000000},
+            Platform.HUBSPOT: {"cost_per_request": 0.0002, "monthly_free": 500000},
+            Platform.KLAVIYO: {"cost_per_request": 0.0001, "monthly_free": 1000000},
             Platform.SHOPIFY: {"cost_per_request": 0.0001, "monthly_free": 1000000},
             Platform.STRIPE: {"cost_per_request": 0.029, "monthly_free": 0}  # 2.9% + 30¢ per transaction
         }
@@ -241,6 +268,12 @@ class PlatformIntegrationsManager:
             except Exception:
                 pass
             return result
+        elif platform == Platform.TRIPLEWHALE:
+            result = await self._handle_triplewhale_action(integration, action, organization_id, params)
+        elif platform == Platform.HUBSPOT:
+            result = await self._handle_hubspot_action(integration, action, organization_id, params)
+        elif platform == Platform.KLAVIYO:
+            result = await self._handle_klaviyo_action(integration, action, organization_id, params)
         elif platform == Platform.GOHIGHLEVEL:
             result = await self._handle_gohighlevel_action(integration, action, organization_id, params)
             # Best-effort per-request cost tracking in low-cost mode
@@ -500,6 +533,201 @@ class PlatformIntegrationsManager:
 
         else:
             raise ValueError(f"Unknown GoHighLevel action: {action}")
+
+    # ========== TRIPLEWHALE HANDLERS ==========
+
+    async def _handle_triplewhale_action(
+        self,
+        integration,
+        action: str,
+        organization_id: str,
+        params: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Handle TripleWhale specific actions"""
+        if action == "get_attribution":
+            result = await integration.get_attribution(
+                organization_id,
+                params["start_date"],
+                params["end_date"],
+                params.get("channel")
+            )
+            return {
+                "status": result.get("status", "success"),
+                "attribution_data": result.get("data"),
+                "platform": "triplewhale"
+            }
+
+        elif action == "get_revenue_metrics":
+            result = await integration.get_revenue_metrics(
+                organization_id,
+                params["start_date"],
+                params["end_date"],
+                params.get("breakdown")
+            )
+            return {
+                "status": result.get("status", "success"),
+                "revenue_data": result.get("data"),
+                "platform": "triplewhale"
+            }
+
+        elif action == "get_creative_performance":
+            result = await integration.get_creative_performance(
+                organization_id,
+                params["start_date"],
+                params["end_date"],
+                params.get("channel")
+            )
+            return {
+                "status": result.get("status", "success"),
+                "creative_data": result.get("data"),
+                "platform": "triplewhale"
+            }
+
+        elif action == "get_roas":
+            # Get ROAS data via revenue metrics
+            result = await integration.get_revenue_metrics(
+                organization_id,
+                params["start_date"],
+                params["end_date"],
+                breakdown="channel"
+            )
+            return {
+                "status": result.get("status", "success"),
+                "roas_data": result.get("data"),
+                "platform": "triplewhale"
+            }
+
+        else:
+            raise ValueError(f"Unknown TripleWhale action: {action}")
+
+    # ========== HUBSPOT HANDLERS ==========
+
+    async def _handle_hubspot_action(
+        self,
+        integration,
+        action: str,
+        organization_id: str,
+        params: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Handle HubSpot specific actions"""
+        if action == "create_contact":
+            result = await integration.create_contact(
+                organization_id,
+                params["contact_data"]
+            )
+            return {
+                "status": result.get("status", "success"),
+                "contact_id": result.get("contact_id"),
+                "platform": "hubspot"
+            }
+
+        elif action == "create_campaign":
+            result = await integration.create_campaign(
+                organization_id,
+                params["campaign_data"]
+            )
+            return {
+                "status": result.get("status", "success"),
+                "campaign_id": result.get("campaign_id"),
+                "platform": "hubspot"
+            }
+
+        elif action == "create_workflow":
+            result = await integration.create_workflow(
+                organization_id,
+                params["workflow_data"]
+            )
+            return {
+                "status": result.get("status", "success"),
+                "workflow_id": result.get("workflow_id"),
+                "platform": "hubspot"
+            }
+
+        elif action == "trigger_workflow":
+            result = await integration.trigger_workflow(
+                organization_id,
+                params["workflow_id"],
+                params["contact_id"]
+            )
+            return {
+                "status": result.get("status", "success"),
+                "platform": "hubspot"
+            }
+
+        elif action == "get_analytics":
+            result = await integration.get_analytics(
+                organization_id,
+                params["start_date"],
+                params["end_date"],
+                params.get("object_type", "contacts")
+            )
+            return {
+                "status": result.get("status", "success"),
+                "analytics_data": result.get("data"),
+                "platform": "hubspot"
+            }
+
+        else:
+            raise ValueError(f"Unknown HubSpot action: {action}")
+
+    # ========== KLAVIYO HANDLERS ==========
+
+    async def _handle_klaviyo_action(
+        self,
+        integration,
+        action: str,
+        organization_id: str,
+        params: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Handle Klaviyo specific actions"""
+        if action == "create_campaign":
+            result = await integration.create_campaign(
+                organization_id,
+                params["campaign_data"]
+            )
+            return {
+                "status": result.get("status", "success"),
+                "campaign_id": result.get("campaign_id"),
+                "platform": "klaviyo"
+            }
+
+        elif action == "create_flow":
+            result = await integration.create_flow(
+                organization_id,
+                params["flow_data"]
+            )
+            return {
+                "status": result.get("status", "success"),
+                "flow_id": result.get("flow_id"),
+                "platform": "klaviyo"
+            }
+
+        elif action == "trigger_flow":
+            result = await integration.trigger_flow(
+                organization_id,
+                params["flow_id"],
+                params["profile_id"]
+            )
+            return {
+                "status": result.get("status", "success"),
+                "platform": "klaviyo"
+            }
+
+        elif action == "get_analytics":
+            result = await integration.get_analytics(
+                organization_id,
+                params["start_date"],
+                params["end_date"],
+                params.get("metric_type", "email")
+            )
+            return {
+                "status": result.get("status", "success"),
+                "analytics_data": result.get("data"),
+                "platform": "klaviyo"
+            }
+
+        else:
+            raise ValueError(f"Unknown Klaviyo action: {action}")
 
     # ========== LINKEDIN ADS HANDLERS ==========
 
@@ -795,8 +1023,46 @@ class PlatformIntegrationsManager:
             })
 
             # Execute sync based on platform
-            if platform_enum == Platform.GOHIGHLEVEL:
-                # Sync contacts from GoHighLevel
+            if platform_enum == Platform.TRIPLEWHALE:
+                # Sync attribution and revenue data from TripleWhale
+                from datetime import timedelta
+                result = await self.execute_platform_action(
+                    platform_enum,
+                    "get_revenue_metrics",
+                    organization_id,
+                    {
+                        "start_date": (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d"),
+                        "end_date": datetime.utcnow().strftime("%Y-%m-%d")
+                    }
+                )
+            elif platform_enum == Platform.HUBSPOT:
+                # Sync contacts and analytics from HubSpot
+                from datetime import timedelta
+                result = await self.execute_platform_action(
+                    platform_enum,
+                    "get_analytics",
+                    organization_id,
+                    {
+                        "start_date": (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d"),
+                        "end_date": datetime.utcnow().strftime("%Y-%m-%d"),
+                        "object_type": "contacts"
+                    }
+                )
+            elif platform_enum == Platform.KLAVIYO:
+                # Sync analytics from Klaviyo
+                from datetime import timedelta
+                result = await self.execute_platform_action(
+                    platform_enum,
+                    "get_analytics",
+                    organization_id,
+                    {
+                        "start_date": (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d"),
+                        "end_date": datetime.utcnow().strftime("%Y-%m-%d"),
+                        "metric_type": "email"
+                    }
+                )
+            elif platform_enum == Platform.GOHIGHLEVEL:
+                # Sync contacts from GoHighLevel (LOW PRIORITY)
                 result = await self.execute_platform_action(
                     platform_enum,
                     "sync_contacts",

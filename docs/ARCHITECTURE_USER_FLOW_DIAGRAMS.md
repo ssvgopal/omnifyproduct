@@ -28,7 +28,10 @@ graph TB
     end
     
     subgraph "Integration Layer"
-        GHL[GoHighLevel API]
+        TW[TripleWhale API - Primary]
+        HS[HubSpot API - Secondary]
+        KL[Klaviyo API - Tertiary]
+        GHL[GoHighLevel API - Low Priority]
         LINKEDIN[LinkedIn Ads API]
         SHOPIFY[Shopify API]
         STRIPE[Stripe API]
@@ -62,6 +65,9 @@ graph TB
     GATEWAY --> WORKFLOWS
     
     AGENTS --> OPENAI
+    PLATFORM_MGR --> TW
+    PLATFORM_MGR --> HS
+    PLATFORM_MGR --> KL
     PLATFORM_MGR --> GHL
     PLATFORM_MGR --> LINKEDIN
     PLATFORM_MGR --> SHOPIFY

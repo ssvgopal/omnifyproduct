@@ -451,6 +451,11 @@ from api.youtube_ads_oauth_routes import router as youtube_ads_oauth_router
 from api.gohighlevel_oauth_routes import router as gohighlevel_oauth_router
 from api.shopify_oauth_routes import router as shopify_oauth_router
 from api.stripe_oauth_routes import router as stripe_oauth_router
+from api.triplewhale_routes import router as triplewhale_router
+from api.triplewhale_oauth_routes import router as triplewhale_oauth_router
+from api.hubspot_routes import router as hubspot_router
+from api.hubspot_oauth_routes import router as hubspot_oauth_router
+from api.klaviyo_routes import router as klaviyo_router
 from api.brain_modules_routes import router as brain_modules_router
 from api.metrics_routes import router as metrics_router
 from api.dashboard_routes import router as dashboard_router
@@ -471,9 +476,14 @@ app.include_router(meta_ads_oauth_router)  # Meta Ads OAuth routes
 app.include_router(linkedin_ads_oauth_router)  # LinkedIn Ads OAuth routes
 app.include_router(tiktok_ads_oauth_router)  # TikTok Ads OAuth routes
 app.include_router(youtube_ads_oauth_router)  # YouTube Ads OAuth routes
-app.include_router(gohighlevel_oauth_router)  # GoHighLevel OAuth routes
+app.include_router(gohighlevel_oauth_router)  # GoHighLevel OAuth routes (LOW PRIORITY)
 app.include_router(shopify_oauth_router)  # Shopify OAuth routes
 app.include_router(stripe_oauth_router)  # Stripe OAuth routes
+app.include_router(triplewhale_router)  # TripleWhale routes (PRIMARY)
+app.include_router(triplewhale_oauth_router)  # TripleWhale OAuth routes
+app.include_router(hubspot_router)  # HubSpot routes (SECONDARY)
+app.include_router(hubspot_oauth_router)  # HubSpot OAuth routes
+app.include_router(klaviyo_router)  # Klaviyo routes (TERTIARY)
 app.include_router(brain_modules_router)  # Brain modules routes (ORACLE, EYES, VOICE)
 app.include_router(metrics_router)  # Prometheus metrics routes
 app.include_router(dashboard_router)  # Dashboard statistics routes
