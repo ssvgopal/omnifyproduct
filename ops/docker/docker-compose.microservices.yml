@@ -1,0 +1,225 @@
+version: "3.9"
+
+services:
+  # MongoDB
+  mongodb:
+    image: mongo:7
+    container_name: omnify-mongodb
+    environment:
+      MONGO_INITDB_DATABASE: omnify_cloud
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Auth Service
+  auth-service:
+    build:
+      context: ../..
+      dockerfile: services/auth_service/Dockerfile
+    container_name: omnify-auth-service
+    env_file:
+      - ../../.env
+    environment:
+      - DEPLOYMENT_MODE=microservices
+      - SERVICE_NAME=auth
+      - MONGO_URL=mongodb://mongodb:27017
+      - PORT=8001
+    ports:
+      - "8001:8001"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Integrations Service
+  integrations-service:
+    build:
+      context: ../..
+      dockerfile: services/integrations_service/Dockerfile
+    container_name: omnify-integrations-service
+    env_file:
+      - ../../.env
+    environment:
+      - DEPLOYMENT_MODE=microservices
+      - SERVICE_NAME=integrations
+      - MONGO_URL=mongodb://mongodb:27017
+      - PORT=8002
+      - AUTH_SERVICE_URL=http://auth-service:8001
+    ports:
+      - "8002:8002"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # AgentKit Service
+  agentkit-service:
+    build:
+      context: ../..
+      dockerfile: services/agentkit_service/Dockerfile
+    container_name: omnify-agentkit-service
+    env_file:
+      - ../../.env
+    environment:
+      - DEPLOYMENT_MODE=microservices
+      - SERVICE_NAME=agentkit
+      - MONGO_URL=mongodb://mongodb:27017
+      - PORT=8003
+      - AUTH_SERVICE_URL=http://auth-service:8001
+    ports:
+      - "8003:8003"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Analytics Service
+  analytics-service:
+    build:
+      context: ../..
+      dockerfile: services/analytics_service/Dockerfile
+    container_name: omnify-analytics-service
+    env_file:
+      - ../../.env
+    environment:
+      - DEPLOYMENT_MODE=microservices
+      - SERVICE_NAME=analytics
+      - MONGO_URL=mongodb://mongodb:27017
+      - PORT=8004
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - INTEGRATIONS_SERVICE_URL=http://integrations-service:8002
+    ports:
+      - "8004:8004"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      integrations-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Onboarding Service
+  onboarding-service:
+    build:
+      context: ../..
+      dockerfile: services/onboarding_service/Dockerfile
+    container_name: omnify-onboarding-service
+    env_file:
+      - ../../.env
+    environment:
+      - DEPLOYMENT_MODE=microservices
+      - SERVICE_NAME=onboarding
+      - MONGO_URL=mongodb://mongodb:27017
+      - PORT=8005
+      - AUTH_SERVICE_URL=http://auth-service:8001
+    ports:
+      - "8005:8005"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ML Service
+  ml-service:
+    build:
+      context: ../..
+      dockerfile: services/ml_service/Dockerfile
+    container_name: omnify-ml-service
+    env_file:
+      - ../../.env
+    environment:
+      - DEPLOYMENT_MODE=microservices
+      - SERVICE_NAME=ml
+      - MONGO_URL=mongodb://mongodb:27017
+      - PORT=8006
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - ANALYTICS_SERVICE_URL=http://analytics-service:8004
+    ports:
+      - "8006:8006"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      analytics-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Infrastructure Service
+  infrastructure-service:
+    build:
+      context: ../..
+      dockerfile: services/infrastructure_service/Dockerfile
+    container_name: omnify-infrastructure-service
+    env_file:
+      - ../../.env
+    environment:
+      - DEPLOYMENT_MODE=microservices
+      - SERVICE_NAME=infrastructure
+      - MONGO_URL=mongodb://mongodb:27017
+      - PORT=8007
+    ports:
+      - "8007:8007"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8007/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Frontend
+  frontend:
+    build:
+      context: ../..
+      dockerfile: ops/docker/Dockerfile.frontend
+    container_name: omnify-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - auth-service
+      - integrations-service
+    environment:
+      - REACT_APP_API_URL=http://localhost:8001
+
+volumes:
+  mongodb_data:
+

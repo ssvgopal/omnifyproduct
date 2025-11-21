@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: omnify-integrations-service
+  labels:
+    app: integrations-service
+    tier: api
+    service: integrations
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: integrations-service
+  template:
+    metadata:
+      labels:
+        app: integrations-service
+        service: integrations
+    spec:
+      containers:
+      - name: integrations
+        image: omnify/integrations-service:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8002
+        env:
+        - name: DEPLOYMENT_MODE
+          value: "microservices"
+        - name: SERVICE_NAME
+          value: "integrations"
+        - name: PORT
+          value: "8002"
+        - name: MONGO_URL
+          valueFrom:
+            secretKeyRef:
+              name: omnify-secrets
+              key: MONGO_URL
+        - name: DB_NAME
+          value: "omnify_cloud"
+        - name: AUTH_SERVICE_URL
+          value: "http://auth-service:80"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8002
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8002
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: integrations-service
+  labels:
+    app: integrations-service
+spec:
+  selector:
+    app: integrations-service
+  ports:
+  - port: 80
+    targetPort: 8002
+  type: ClusterIP
+

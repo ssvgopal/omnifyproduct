@@ -73,6 +73,10 @@ logger = logging.getLogger(__name__)
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
+# Deployment mode (monolith by default, can be overridden by environment)
+DEPLOYMENT_MODE = os.getenv("DEPLOYMENT_MODE", "monolith")  # "monolith" or "microservices"
+SERVICE_NAME = os.getenv("SERVICE_NAME", None)  # Only used in microservices mode
+
 # Global variables
 db = None
 real_agentkit_adapter = None
