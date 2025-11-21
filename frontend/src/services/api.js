@@ -368,6 +368,128 @@ class OmnifyAPI {
     }
   }
 
+  // ========== METABASE & BI APIs ==========
+
+  async getMetabaseEmbedUrl(dashboardId, organizationId, userId) {
+    try {
+      const response = await this.client.get('/metabase/embedding/url', {
+        params: { dashboard_id: dashboardId, organization_id: organizationId, user_id: userId }
+      });
+      return response.data;
+    } catch (error) {
+      logger.error('Failed to get Metabase embed URL', error, { dashboardId });
+      throw error;
+    }
+  }
+
+  async generateMetabaseToken(dashboardId, organizationId, userId, expiresHours = 24) {
+    try {
+      const response = await this.client.post('/metabase/embedding/token', {
+        dashboard_id: dashboardId,
+        organization_id: organizationId,
+        user_id: userId,
+        expires_hours: expiresHours
+      });
+      return response.data;
+    } catch (error) {
+      logger.error('Failed to generate Metabase token', error, { dashboardId });
+      throw error;
+    }
+  }
+
+  async getMetabaseTemplates() {
+    try {
+      const response = await this.client.get('/metabase/templates');
+      return response.data;
+    } catch (error) {
+      logger.error('Failed to get Metabase templates', error);
+      throw error;
+    }
+  }
+
+  async createMetabaseDashboard(templateName, organizationId, customName = null) {
+    try {
+      const response = await this.client.post('/metabase/dashboard/create', {
+        template_name: templateName,
+        organization_id: organizationId,
+        custom_name: customName
+      });
+      return response.data;
+    } catch (error) {
+      logger.error('Failed to create Metabase dashboard', error, { templateName });
+      throw error;
+    }
+  }
+
+  // ========== REPORTING APIs ==========
+
+  async createReport(reportData) {
+    try {
+      const response = await this.client.post('/reporting/reports', reportData);
+      return response.data;
+    } catch (error) {
+      logger.error('Failed to create report', error, { reportData });
+      throw error;
+    }
+  }
+
+  async generateReport(reportConfig, organizationId) {
+    try {
+      const response = await this.client.post('/reporting/generate', {
+        report_config: reportConfig,
+        organization_id: organizationId
+      });
+      return response.data;
+    } catch (error) {
+      logger.error('Failed to generate report', error, { reportConfig });
+      throw error;
+    }
+  }
+
+  async getScheduledReports(organizationId) {
+    try {
+      const response = await this.client.get('/reporting/scheduled-reports', {
+        params: { organization_id: organizationId }
+      });
+      return response.data;
+    } catch (error) {
+      logger.error('Failed to get scheduled reports', error, { organizationId });
+      throw error;
+    }
+  }
+
+  async createScheduledReport(scheduleData) {
+    try {
+      const response = await this.client.post('/reporting/scheduled-reports', scheduleData);
+      return response.data;
+    } catch (error) {
+      logger.error('Failed to create scheduled report', error, { scheduleData });
+      throw error;
+    }
+  }
+
+  async updateScheduledReportStatus(scheduleId, status) {
+    try {
+      const response = await this.client.put(`/reporting/scheduled-reports/${scheduleId}/status`, {
+        status
+      });
+      return response.data;
+    } catch (error) {
+      logger.error('Failed to update scheduled report status', error, { scheduleId, status });
+      throw error;
+    }
+  }
+
+  async deleteScheduledReport(scheduleId) {
+    try {
+      const response = await this.client.delete(`/reporting/scheduled-reports/${scheduleId}`);
+      return response.data;
+    } catch (error) {
+      logger.error('Failed to delete scheduled report', error, { scheduleId });
+      throw error;
+    }
+  }
+
   // ========== INTEGRATIONS APIs ==========
 
   async listAvailableIntegrations(category = null) {

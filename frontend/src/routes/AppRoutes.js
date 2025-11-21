@@ -11,6 +11,7 @@ const Demo = lazy(() => import('@/pages/Demo'));
 const Agents = lazy(() => import('@/pages/Agents'));
 const Workflows = lazy(() => import('@/pages/Workflows.jsx'));
 const Analytics = lazy(() => import('@/pages/Analytics'));
+const AnalyticsBI = lazy(() => import('@/pages/AnalyticsBI.jsx'));
 const Settings = lazy(() => import('@/pages/Settings'));
 
 // Lazy load dashboard components
@@ -61,6 +62,7 @@ const AppRoutes = () => {
             <Route path="/agents" element={<Agents />} />
             <Route path="/workflows" element={<Workflows />} />
             <Route path="/analytics" element={<Analytics />} />
+            <Route path="/analytics/bi" element={<AnalyticsBI />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/admin" element={<AdminDashboard />} />
           </Routes>
