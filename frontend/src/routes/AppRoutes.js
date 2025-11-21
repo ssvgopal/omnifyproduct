@@ -9,7 +9,7 @@ const Home = lazy(() => import('@/pages/Home'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Demo = lazy(() => import('@/pages/Demo'));
 const Agents = lazy(() => import('@/pages/Agents'));
-const Workflows = lazy(() => import('@/pages/Workflows'));
+const Workflows = lazy(() => import('@/pages/Workflows.jsx'));
 const Analytics = lazy(() => import('@/pages/Analytics'));
 const Settings = lazy(() => import('@/pages/Settings'));
 

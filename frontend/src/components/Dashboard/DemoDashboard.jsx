@@ -27,7 +27,14 @@ const DemoDashboard = () => {
     totalSpend: 0,
     totalRevenue: 0,
     roas: 0,
-    activeUsers: 0
+    activeUsers: 0,
+    totalImpressions: 0,
+    totalClicks: 0,
+    totalConversions: 0,
+    avgCtr: 0,
+    avgCpa: 0,
+    platformBreakdown: {},
+    recentActivity: []
   });
   const [loading, setLoading] = useState(true);
 
@@ -37,21 +44,44 @@ const DemoDashboard = () => {
 
   const loadDashboardStats = async () => {
     try {
+      setLoading(true);
       // Load aggregated stats from backend
-      const response = await api.get('/api/analytics/dashboard/stats');
-      if (response.data.success) {
-        setStats(response.data.data);
+      const response = await api.get('/api/analytics/dashboard/stats?days=30');
+      if (response.data) {
+        // Map backend response to frontend state
+        setStats({
+          totalCampaigns: response.data.total_campaigns || 0,
+          activeCampaigns: response.data.active_campaigns || 0,
+          totalSpend: response.data.total_spend || 0,
+          totalRevenue: response.data.total_revenue || 0,
+          roas: response.data.roas || 0,
+          activeUsers: response.data.active_users || 0,
+          totalImpressions: response.data.total_impressions || 0,
+          totalClicks: response.data.total_clicks || 0,
+          totalConversions: response.data.total_conversions || 0,
+          avgCtr: response.data.avg_ctr || 0,
+          avgCpa: response.data.avg_cpa || 0,
+          platformBreakdown: response.data.platform_breakdown || {},
+          recentActivity: response.data.recent_activity || []
+        });
       }
     } catch (err) {
       console.error('Error loading dashboard stats:', err);
-      // Use mock data for demo
+      // Use mock data as fallback only if API fails
       setStats({
         totalCampaigns: 12,
         activeCampaigns: 8,
         totalSpend: 45230,
         totalRevenue: 125000,
         roas: 2.76,
-        activeUsers: 1245
+        activeUsers: 1245,
+        totalImpressions: 0,
+        totalClicks: 0,
+        totalConversions: 0,
+        avgCtr: 0,
+        avgCpa: 0,
+        platformBreakdown: {},
+        recentActivity: []
       });
     } finally {
       setLoading(false);
@@ -215,29 +245,30 @@ const DemoDashboard = () => {
                 <CardTitle>Recent Activity</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-                      <span className="text-sm">Google Ads campaign "Summer Sale" started</span>
-                    </div>
-                    <span className="text-xs text-gray-500">2 hours ago</span>
+                {loading ? (
+                  <div className="text-center py-4 text-gray-500">Loading activity...</div>
+                ) : stats.recentActivity && stats.recentActivity.length > 0 ? (
+                  <div className="space-y-3">
+                    {stats.recentActivity.map((activity, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className={`h-2 w-2 rounded-full ${
+                            activity.type === 'campaign_started' ? 'bg-green-500' :
+                            activity.type === 'integration_connected' ? 'bg-blue-500' :
+                            activity.type === 'user_onboarded' ? 'bg-purple-500' :
+                            'bg-gray-500'
+                          }`}></div>
+                          <span className="text-sm">{activity.description || activity.type}</span>
+                        </div>
+                        <span className="text-xs text-gray-500">
+                          {activity.timestamp ? new Date(activity.timestamp).toLocaleString() : 'Recently'}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
-                      <span className="text-sm">Meta Ads integration connected</span>
-                    </div>
-                    <span className="text-xs text-gray-500">5 hours ago</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="h-2 w-2 bg-purple-500 rounded-full"></div>
-                      <span className="text-sm">New user onboarded</span>
-                    </div>
-                    <span className="text-xs text-gray-500">1 day ago</span>
-                  </div>
-                </div>
+                ) : (
+                  <div className="text-center py-4 text-gray-500">No recent activity</div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -259,14 +290,12 @@ const DemoDashboard = () => {
 
           {/* Settings Tab */}
           <TabsContent value="settings">
-            <Card>
-              <CardHeader>
-                <CardTitle>Settings</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Settings panel coming soon...</p>
-              </CardContent>
-            </Card>
+            <div className="text-center py-8">
+              <p className="text-gray-600 mb-4">Settings panel</p>
+              <Button onClick={() => window.location.href = '/settings'}>
+                Go to Settings
+              </Button>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

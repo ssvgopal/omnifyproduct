@@ -12,6 +12,10 @@ from core.auth import get_current_user
 from services.oracle_predictive_service import OraclePredictiveService
 from services.eyes_creative_service import EyesCreativeService
 from services.voice_automation_service import VoiceAutomationService
+from services.curiosity_market_service import CuriosityMarketService
+from services.memory_client_service import MemoryClientService
+from services.reflexes_performance_service import ReflexesPerformanceService
+from services.face_experience_service import FaceExperienceService
 
 router = APIRouter(prefix="/api/brain", tags=["Brain Modules"])
 
@@ -64,6 +68,26 @@ def get_eyes_service(db: AsyncIOMotorDatabase = Depends(get_database)) -> EyesCr
 def get_voice_service(db: AsyncIOMotorDatabase = Depends(get_database)) -> VoiceAutomationService:
     """Get VOICE service instance"""
     return VoiceAutomationService(db)
+
+
+def get_curiosity_service(db: AsyncIOMotorDatabase = Depends(get_database)) -> CuriosityMarketService:
+    """Get CURIOSITY service instance"""
+    return CuriosityMarketService(db)
+
+
+def get_memory_service(db: AsyncIOMotorDatabase = Depends(get_database)) -> MemoryClientService:
+    """Get MEMORY service instance"""
+    return MemoryClientService(db)
+
+
+def get_reflexes_service(db: AsyncIOMotorDatabase = Depends(get_database)) -> ReflexesPerformanceService:
+    """Get REFLEXES service instance"""
+    return ReflexesPerformanceService(db)
+
+
+def get_face_service(db: AsyncIOMotorDatabase = Depends(get_database)) -> FaceExperienceService:
+    """Get FACE service instance"""
+    return FaceExperienceService(db)
 
 
 # ========== ORACLE (Predictive Intelligence) Routes ==========
@@ -276,6 +300,385 @@ async def reallocate_budget(
         return {
             "success": True,
             "data": result
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+# ========== CURIOSITY (Market Intelligence) Routes ==========
+
+@router.post("/curiosity/analyze-market")
+async def analyze_market(
+    vertical: str,
+    data: Optional[Dict[str, Any]] = None,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    curiosity_service: CuriosityMarketService = Depends(get_curiosity_service)
+):
+    """Analyze market for a specific vertical"""
+    try:
+        analysis = await curiosity_service.analyze_market(vertical, data)
+        
+        return {
+            "success": True,
+            "data": {
+                "vertical": analysis.vertical,
+                "market_size": analysis.market_size,
+                "growth_rate": analysis.growth_rate,
+                "key_trends": analysis.key_trends,
+                "opportunities": analysis.opportunities,
+                "competition_level": analysis.competition_level,
+                "key_players": analysis.key_players,
+                "market_gaps": analysis.market_gaps,
+                "predictions": analysis.predictions,
+                "investment_areas": analysis.investment_areas,
+                "confidence": analysis.confidence
+            }
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.post("/curiosity/analyze-competition")
+async def analyze_competition(
+    vertical: str,
+    competitor_data: Optional[List[Dict[str, Any]]] = None,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    curiosity_service: CuriosityMarketService = Depends(get_curiosity_service)
+):
+    """Analyze competitive landscape"""
+    try:
+        analyses = await curiosity_service.analyze_competition(vertical, competitor_data)
+        
+        return {
+            "success": True,
+            "data": [
+                {
+                    "competitor_name": a.competitor_name,
+                    "market_share": a.market_share,
+                    "strengths": a.strengths,
+                    "weaknesses": a.weaknesses,
+                    "positioning": a.positioning,
+                    "threat_level": a.threat_level,
+                    "recommendations": a.recommendations
+                }
+                for a in analyses
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.post("/curiosity/identify-trends")
+async def identify_trends(
+    vertical: str,
+    timeframe_days: int = 90,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    curiosity_service: CuriosityMarketService = Depends(get_curiosity_service)
+):
+    """Identify market trends"""
+    try:
+        trends = await curiosity_service.identify_trends(vertical, timeframe_days)
+        
+        return {
+            "success": True,
+            "data": [
+                {
+                    "trend_name": t.trend_name,
+                    "category": t.category,
+                    "impact": t.impact,
+                    "timeframe": t.timeframe,
+                    "opportunities": t.opportunities,
+                    "threats": t.threats,
+                    "confidence": t.confidence
+                }
+                for t in trends
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+# ========== MEMORY (Client Intelligence) Routes ==========
+
+@router.post("/memory/analyze-behavior")
+async def analyze_client_behavior(
+    client_id: str,
+    behavior_data: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    memory_service: MemoryClientService = Depends(get_memory_service)
+):
+    """Analyze client behavior and create profile"""
+    try:
+        profile = await memory_service.analyze_client_behavior(client_id, behavior_data)
+        
+        return {
+            "success": True,
+            "data": {
+                "client_id": profile.client_id,
+                "engagement_score": profile.engagement_score,
+                "success_score": profile.success_score,
+                "health_score": profile.health_score,
+                "behavior_patterns": profile.behavior_patterns,
+                "preferences": profile.preferences,
+                "recommendations": profile.recommendations
+            }
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.post("/memory/predict-churn")
+async def predict_churn(
+    client_id: str,
+    client_data: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    memory_service: MemoryClientService = Depends(get_memory_service)
+):
+    """Predict client churn"""
+    try:
+        prediction = await memory_service.predict_churn(client_id, client_data)
+        
+        return {
+            "success": True,
+            "data": {
+                "client_id": prediction.client_id,
+                "churn_probability": prediction.churn_probability,
+                "churn_risk_level": prediction.churn_risk_level,
+                "days_until_churn": prediction.days_until_churn,
+                "factors": prediction.factors,
+                "recommendations": prediction.recommendations
+            }
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.post("/memory/segment-clients")
+async def segment_clients(
+    organization_id: str,
+    criteria: Optional[Dict[str, Any]] = None,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    memory_service: MemoryClientService = Depends(get_memory_service)
+):
+    """Segment clients based on behavior"""
+    try:
+        segments = await memory_service.segment_clients(organization_id, criteria)
+        
+        return {
+            "success": True,
+            "data": [
+                {
+                    "segment_id": s.segment_id,
+                    "segment_name": s.segment_name,
+                    "client_count": s.client_count,
+                    "characteristics": s.characteristics,
+                    "avg_ltv": s.avg_ltv,
+                    "churn_risk": s.churn_risk,
+                    "engagement_score": s.engagement_score,
+                    "recommendations": s.recommendations
+                }
+                for s in segments
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+# ========== REFLEXES (Performance Optimization) Routes ==========
+
+@router.get("/reflexes/metrics")
+async def get_system_metrics(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    reflexes_service: ReflexesPerformanceService = Depends(get_reflexes_service)
+):
+    """Get current system performance metrics"""
+    try:
+        metrics = await reflexes_service.get_system_metrics()
+        
+        return {
+            "success": True,
+            "data": {
+                "cpu_usage": metrics.cpu_usage,
+                "memory_usage": metrics.memory_usage,
+                "disk_io": metrics.disk_io,
+                "network_io": metrics.network_io,
+                "response_time": metrics.response_time,
+                "throughput": metrics.throughput,
+                "error_rate": metrics.error_rate,
+                "timestamp": metrics.timestamp.isoformat()
+            }
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.get("/reflexes/bottlenecks")
+async def identify_bottlenecks(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    reflexes_service: ReflexesPerformanceService = Depends(get_reflexes_service)
+):
+    """Identify performance bottlenecks"""
+    try:
+        bottlenecks = await reflexes_service.identify_bottlenecks()
+        
+        return {
+            "success": True,
+            "data": [
+                {
+                    "component": b.component,
+                    "metric": b.metric,
+                    "current_value": b.current_value,
+                    "threshold": b.threshold,
+                    "severity": b.severity,
+                    "recommendations": b.recommendations
+                }
+                for b in bottlenecks
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.get("/reflexes/optimizations")
+async def get_optimization_recommendations(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    reflexes_service: ReflexesPerformanceService = Depends(get_reflexes_service)
+):
+    """Get performance optimization recommendations"""
+    try:
+        recommendations = await reflexes_service.get_optimization_recommendations()
+        
+        return {
+            "success": True,
+            "data": [
+                {
+                    "action_type": r.action_type,
+                    "target": r.target,
+                    "current_value": r.current_value,
+                    "recommended_value": r.recommended_value,
+                    "priority": r.priority,
+                    "impact": r.impact,
+                    "estimated_improvement": r.estimated_improvement
+                }
+                for r in recommendations
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+# ========== FACE (Customer Experience) Routes ==========
+
+@router.post("/face/analyze-behavior")
+async def analyze_user_behavior(
+    user_id: str,
+    timeframe_days: int = 30,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    face_service: FaceExperienceService = Depends(get_face_service)
+):
+    """Analyze user behavior patterns"""
+    try:
+        behavior = await face_service.analyze_user_behavior(user_id, timeframe_days)
+        
+        return {
+            "success": True,
+            "data": {
+                "user_id": behavior.user_id,
+                "session_count": behavior.session_count,
+                "avg_session_duration": behavior.avg_session_duration,
+                "features_used": behavior.features_used,
+                "common_paths": behavior.common_paths,
+                "drop_off_points": behavior.drop_off_points,
+                "engagement_score": behavior.engagement_score
+            }
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.get("/face/ux-insights")
+async def get_ux_insights(
+    organization_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    face_service: FaceExperienceService = Depends(get_face_service)
+):
+    """Get UX insights and recommendations"""
+    try:
+        insights = await face_service.get_ux_insights(organization_id)
+        
+        return {
+            "success": True,
+            "data": [
+                {
+                    "insight_type": i.insight_type,
+                    "component": i.component,
+                    "issue": i.issue,
+                    "impact": i.impact,
+                    "recommendation": i.recommendation,
+                    "priority": i.priority
+                }
+                for i in insights
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.post("/face/personalization")
+async def create_personalization_profile(
+    user_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    face_service: FaceExperienceService = Depends(get_face_service)
+):
+    """Create personalized experience profile"""
+    try:
+        profile = await face_service.create_personalization_profile(user_id)
+        
+        return {
+            "success": True,
+            "data": {
+                "user_id": profile.user_id,
+                "preferences": profile.preferences,
+                "recommended_features": profile.recommended_features,
+                "content_preferences": profile.content_preferences,
+                "ui_preferences": profile.ui_preferences
+            }
         }
     except Exception as e:
         raise HTTPException(

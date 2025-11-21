@@ -39,6 +39,7 @@ import {
   Zap
 } from 'lucide-react';
 import api from '@/services/api';
+import ABTestingInterface from '@/components/Dashboard/ABTestingInterface';
 
 const CampaignManagementInterface = () => {
   const [activeTab, setActiveTab] = useState('campaigns');
@@ -505,38 +506,7 @@ const CampaignManagementInterface = () => {
 
         {/* A/B Testing Tab */}
         <TabsContent value="testing">
-          <Card className="shadow-lg border-none bg-white/80 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-xl font-bold text-purple-800">A/B Testing</CardTitle>
-              <CardDescription>Test different campaign variations to optimize performance</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {abTests.map((test) => (
-                  <Card key={test.test_id} className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold text-lg">{test.name}</h3>
-                        <p className="text-gray-600">{test.description}</p>
-                      </div>
-                      <Badge variant="outline">{test.status}</Badge>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
-                      <div>Type: {test.test_type}</div>
-                      <div>Variants: {test.variants.length}</div>
-                      <div>Traffic Split: {test.traffic_split}%</div>
-                      <div>Duration: {test.test_duration_days} days</div>
-                    </div>
-                    <div className="mt-3">
-                      <Button variant="outline" size="sm">
-                        <BarChart3 className="mr-2 h-3 w-3" /> View Results
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <ABTestingInterface />
         </TabsContent>
 
         {/* Optimization Tab */}

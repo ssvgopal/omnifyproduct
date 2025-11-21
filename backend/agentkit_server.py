@@ -447,6 +447,7 @@ from api.google_ads_oauth_routes import router as google_ads_oauth_router
 from api.meta_ads_oauth_routes import router as meta_ads_oauth_router
 from api.brain_modules_routes import router as brain_modules_router
 from api.metrics_routes import router as metrics_router
+from api.dashboard_routes import router as dashboard_router
 
 # Import middleware
 from middleware.database_security_middleware import DatabaseSecurityMiddleware
@@ -462,6 +463,8 @@ app.include_router(google_ads_oauth_router)  # Google Ads OAuth routes
 app.include_router(meta_ads_oauth_router)  # Meta Ads OAuth routes
 app.include_router(brain_modules_router)  # Brain modules routes (ORACLE, EYES, VOICE)
 app.include_router(metrics_router)  # Prometheus metrics routes
+app.include_router(dashboard_router)  # Dashboard statistics routes
+app.include_router(workflow_router)  # Advanced automation workflows routes
 
 # Versioned API routes (v1)
 try:
