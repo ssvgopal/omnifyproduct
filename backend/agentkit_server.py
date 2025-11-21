@@ -460,6 +460,7 @@ from api.brain_modules_routes import router as brain_modules_router
 from api.metrics_routes import router as metrics_router
 from api.dashboard_routes import router as dashboard_router
 from api.workflow_routes import router as workflow_router
+from api.client_onboarding_routes import router as client_onboarding_router
 
 # Import middleware
 from middleware.database_security_middleware import DatabaseSecurityMiddleware
@@ -488,6 +489,7 @@ app.include_router(brain_modules_router)  # Brain modules routes (ORACLE, EYES, 
 app.include_router(metrics_router)  # Prometheus metrics routes
 app.include_router(dashboard_router)  # Dashboard statistics routes
 app.include_router(workflow_router)  # Advanced automation workflows routes
+app.include_router(client_onboarding_router)  # Client onboarding routes (profiles, files, credentials)
 
 # Versioned API routes (v1)
 try:
