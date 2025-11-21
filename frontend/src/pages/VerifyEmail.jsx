@@ -22,9 +22,9 @@ const VerifyEmail = () => {
       return;
     }
 
-    // Call verification endpoint
-    axios.get(`${BACKEND_URL}/api/auth/verify-email`, {
-      params: { token }
+    // Call verification endpoint (POST with token in body)
+    axios.post(`${BACKEND_URL}/api/email-verification/verify-email`, {
+      token: token
     })
       .then((response) => {
         setStatus('success');

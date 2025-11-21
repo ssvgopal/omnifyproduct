@@ -14,6 +14,7 @@ import {
   Shield,
   TrendingUp
 } from 'lucide-react';
+import ApiKeyForm from '@/components/integrations/ApiKeyForm';
 import api from '@/services/api';
 
 const IntegrationSetup = () => {
@@ -21,6 +22,7 @@ const IntegrationSetup = () => {
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(null);
   const [error, setError] = useState(null);
+  const [showApiKeyForm, setShowApiKeyForm] = useState(null);
 
   useEffect(() => {
     loadIntegrations();
@@ -35,14 +37,53 @@ const IntegrationSetup = () => {
         checkIntegrationStatus('meta-ads')
       ]);
 
+      // Check all integrations
+      const [triplewhaleStatus, hubspotStatus, klaviyoStatus] = await Promise.all([
+        checkIntegrationStatus('triplewhale'),
+        checkIntegrationStatus('hubspot'),
+        checkIntegrationStatus('klaviyo')
+      ]);
+
       setIntegrations([
+        {
+          id: 'triplewhale',
+          name: 'TripleWhale',
+          description: 'Attribution and analytics for DTC brands (PRIMARY)',
+          icon: '🐋',
+          status: triplewhaleStatus,
+          color: 'blue',
+          authType: 'api_key',
+          priority: 'primary'
+        },
+        {
+          id: 'hubspot',
+          name: 'HubSpot',
+          description: 'CRM and marketing automation (SECONDARY)',
+          icon: '🔵',
+          status: hubspotStatus,
+          color: 'purple',
+          authType: 'api_key',
+          priority: 'secondary'
+        },
+        {
+          id: 'klaviyo',
+          name: 'Klaviyo',
+          description: 'Email and SMS marketing for DTC (TERTIARY)',
+          icon: '📧',
+          status: klaviyoStatus,
+          color: 'green',
+          authType: 'api_key',
+          priority: 'tertiary'
+        },
         {
           id: 'google-ads',
           name: 'Google Ads',
           description: 'Manage campaigns, keywords, and performance metrics',
           icon: '🔍',
           status: googleAdsStatus,
-          color: 'blue'
+          color: 'blue',
+          authType: 'oauth',
+          priority: 'standard'
         },
         {
           id: 'meta-ads',
@@ -50,7 +91,9 @@ const IntegrationSetup = () => {
           description: 'Facebook and Instagram advertising management',
           icon: '📘',
           status: metaAdsStatus,
-          color: 'purple'
+          color: 'purple',
+          authType: 'oauth',
+          priority: 'standard'
         }
       ]);
     } catch (err) {
@@ -269,7 +312,13 @@ const IntegrationSetup = () => {
                   </>
                 ) : (
                   <Button
-                    onClick={() => handleConnect(integration.id)}
+                    onClick={() => {
+                      if (integration.authType === 'api_key') {
+                        setShowApiKeyForm(integration);
+                      } else {
+                        handleConnect(integration.id);
+                      }
+                    }}
                     disabled={connecting === integration.id}
                     className="w-full"
                     variant={integration.color === 'blue' ? 'default' : 'secondary'}
@@ -308,15 +357,26 @@ const IntegrationSetup = () => {
           <div className="flex items-start space-x-3">
             <Shield className="h-5 w-5 text-blue-600 mt-0.5" />
             <div>
-              <h3 className="font-semibold text-blue-900 mb-1">Secure OAuth2 Authentication</h3>
+              <h3 className="font-semibold text-blue-900 mb-1">Secure Authentication</h3>
               <p className="text-sm text-blue-700">
-                All integrations use industry-standard OAuth2 authentication. Your credentials are 
-                encrypted and stored securely. You can revoke access at any time.
+                All integrations use industry-standard OAuth2 or API key authentication. Your credentials are 
+                encrypted and stored securely using our production secrets manager. You can revoke access at any time.
               </p>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {showApiKeyForm && (
+        <ApiKeyForm
+          platform={showApiKeyForm}
+          onSuccess={() => {
+            setShowApiKeyForm(null);
+            loadIntegrations();
+          }}
+          onCancel={() => setShowApiKeyForm(null)}
+        />
+      )}
     </div>
   );
 };
