@@ -115,8 +115,12 @@ class LinkedInAdsClient:
             return campaigns
             
         except Exception as e:
-            logger.error(f"Error getting LinkedIn campaigns: {e}")
-            return []
+            logger.error(f"Error getting LinkedIn campaigns: {e}", exc_info=True, extra={
+                "account_id": account,
+                "error_type": type(e).__name__
+            })
+            # Re-raise for proper error handling upstream
+            raise RuntimeError(f"LinkedIn Ads API error: Failed to get campaigns - {str(e)}")
     
     async def create_campaign(self, campaign_data: Dict[str, Any]) -> Optional[str]:
         """Create LinkedIn campaign"""
@@ -153,8 +157,11 @@ class LinkedInAdsClient:
             return campaign_id
             
         except Exception as e:
-            logger.error(f"Error creating LinkedIn campaign: {e}")
-            return None
+            logger.error(f"Error creating LinkedIn campaign: {e}", exc_info=True, extra={
+                "campaign_name": campaign_data.get("name"),
+                "error_type": type(e).__name__
+            })
+            raise RuntimeError(f"LinkedIn Ads API error: Failed to create campaign - {str(e)}")
     
     async def get_ads(self, campaign_id: str) -> List[LinkedInAd]:
         """Get LinkedIn ads for campaign"""
@@ -224,8 +231,12 @@ class LinkedInAdsClient:
             return ad_id
             
         except Exception as e:
-            logger.error(f"Error creating LinkedIn ad: {e}")
-            return None
+            logger.error(f"Error creating LinkedIn ad: {e}", exc_info=True, extra={
+                "campaign_id": campaign_id,
+                "ad_name": ad_data.get("name"),
+                "error_type": type(e).__name__
+            })
+            raise RuntimeError(f"LinkedIn Ads API error: Failed to create ad - {str(e)}")
     
     async def get_campaign_insights(self, campaign_id: str, start_date: str, end_date: str) -> Dict[str, Any]:
         """Get LinkedIn campaign insights"""
@@ -265,8 +276,13 @@ class LinkedInAdsClient:
             return insights
             
         except Exception as e:
-            logger.error(f"Error getting LinkedIn campaign insights: {e}")
-            return {}
+            logger.error(f"Error getting LinkedIn campaign insights: {e}", exc_info=True, extra={
+                "campaign_id": campaign_id,
+                "start_date": start_date,
+                "end_date": end_date,
+                "error_type": type(e).__name__
+            })
+            raise RuntimeError(f"LinkedIn Ads API error: Failed to get campaign insights - {str(e)}")
     
     async def update_campaign_budget(self, campaign_id: str, budget: float) -> bool:
         """Update LinkedIn campaign budget"""
@@ -291,8 +307,12 @@ class LinkedInAdsClient:
             return True
             
         except Exception as e:
-            logger.error(f"Error updating LinkedIn campaign budget: {e}")
-            return False
+            logger.error(f"Error updating LinkedIn campaign budget: {e}", exc_info=True, extra={
+                "campaign_id": campaign_id,
+                "new_budget": budget,
+                "error_type": type(e).__name__
+            })
+            raise RuntimeError(f"LinkedIn Ads API error: Failed to update campaign budget - {str(e)}")
     
     async def pause_campaign(self, campaign_id: str) -> bool:
         """Pause LinkedIn campaign"""

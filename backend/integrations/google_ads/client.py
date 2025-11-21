@@ -355,9 +355,8 @@ class GoogleAdsAdapter:
                 }
                 
             except Exception as e:
-                logger.error(f"Failed to create Google Ads campaign: {e}")
-                # Fallback to mock data if API fails
-                return await self._create_mock_campaign(campaign_config)
+                logger.error(f"Failed to create Google Ads campaign: {e}", exc_info=True)
+                raise RuntimeError(f"Google Ads API error: Failed to create campaign - {str(e)}")
     
     async def create_ad_group(self, ad_group_config: Dict[Any, Any], campaign_id: str) -> Dict[Any, Any]:
         """Create an ad group in Google Ads"""
@@ -387,9 +386,8 @@ class GoogleAdsAdapter:
                 }
                 
             except Exception as e:
-                logger.error(f"Failed to create Google Ads ad group: {e}")
-                # Fallback to mock data if API fails
-                return await self._create_mock_ad_group(ad_group_config, campaign_id)
+                logger.error(f"Failed to create Google Ads ad group: {e}", exc_info=True)
+                raise RuntimeError(f"Google Ads API error: Failed to create ad group - {str(e)}")
     
     async def create_keyword(self, keyword_config: Dict[Any, Any], ad_group_id: str) -> Dict[Any, Any]:
         """Create a keyword in Google Ads"""
@@ -420,9 +418,8 @@ class GoogleAdsAdapter:
                 }
                 
             except Exception as e:
-                logger.error(f"Failed to create Google Ads keyword: {e}")
-                # Fallback to mock data if API fails
-                return await self._create_mock_keyword(keyword_config, ad_group_id)
+                logger.error(f"Failed to create Google Ads keyword: {e}", exc_info=True)
+                raise RuntimeError(f"Google Ads API error: Failed to create keyword - {str(e)}")
     
     async def get_campaign_metrics(self, campaign_id: str, start_date: str, end_date: str) -> Dict[Any, Any]:
         """Get campaign metrics from Google Ads"""
@@ -435,71 +432,5 @@ class GoogleAdsAdapter:
                 return response
                 
             except Exception as e:
-                logger.error(f"Failed to get Google Ads campaign metrics: {e}")
-                # Fallback to mock data if API fails
-                return await self._get_mock_metrics()
-    
-    # Fallback mock methods for when API fails
-    async def _create_mock_campaign(self, campaign_config: Dict[Any, Any]) -> Dict[Any, Any]:
-        """Fallback mock campaign creation"""
-        campaign_id = str(uuid.uuid4())
-        campaign = {
-            'id': campaign_id,
-            'name': campaign_config.get('name', 'Unnamed Campaign'),
-            'channel_type': campaign_config.get('channel_type', 'SEARCH'),
-            'status': 'active',
-            'created_at': datetime.utcnow().isoformat(),
-            'platform': 'google_ads',
-            'mock_fallback': True
-        }
-        
-        logger.warning(f"Using mock fallback for Google Ads campaign creation")
-        return campaign
-    
-    async def _create_mock_ad_group(self, ad_group_config: Dict[Any, Any], campaign_id: str) -> Dict[Any, Any]:
-        """Fallback mock ad group creation"""
-        ad_group_id = str(uuid.uuid4())
-        ad_group = {
-            'id': ad_group_id,
-            'name': ad_group_config.get('name', 'Unnamed Ad Group'),
-            'campaign_id': campaign_id,
-            'status': 'active',
-            'created_at': datetime.utcnow().isoformat(),
-            'platform': 'google_ads',
-            'mock_fallback': True
-        }
-        
-        logger.warning(f"Using mock fallback for Google Ads ad group creation")
-        return ad_group
-    
-    async def _create_mock_keyword(self, keyword_config: Dict[Any, Any], ad_group_id: str) -> Dict[Any, Any]:
-        """Fallback mock keyword creation"""
-        keyword_id = str(uuid.uuid4())
-        keyword = {
-            'id': keyword_id,
-            'text': keyword_config.get('text', 'default keyword'),
-            'match_type': keyword_config.get('match_type', 'EXACT'),
-            'ad_group_id': ad_group_id,
-            'status': 'active',
-            'created_at': datetime.utcnow().isoformat(),
-            'platform': 'google_ads',
-            'mock_fallback': True
-        }
-        
-        logger.warning(f"Using mock fallback for Google Ads keyword creation")
-        return keyword
-    
-    async def _get_mock_metrics(self) -> Dict[Any, Any]:
-        """Fallback mock metrics"""
-        return {
-            'impressions': 25000,
-            'clicks': 750,
-            'cost_micros': 2500000,
-            'conversions': 45,
-            'conversions_value': 2250.00,
-            'cost_per_conversion': 55.56,
-            'conversion_rate': 6.0,
-            'average_cpc': 3.33,
-            'ctr': 3.0,
-            'mock_fallback': True
-        }
+                logger.error(f"Failed to get Google Ads campaign metrics: {e}", exc_info=True)
+                raise RuntimeError(f"Google Ads API error: Failed to get campaign metrics - {str(e)}")

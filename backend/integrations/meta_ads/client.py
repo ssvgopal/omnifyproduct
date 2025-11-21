@@ -302,9 +302,8 @@ class MetaAdsAdapter:
                 }
                 
             except Exception as e:
-                logger.error(f"Failed to create Meta Ads campaign: {e}")
-                # Fallback to mock data if API fails
-                return await self._create_mock_campaign(campaign_config)
+                logger.error(f"Failed to create Meta Ads campaign: {e}", exc_info=True)
+                raise RuntimeError(f"Meta Ads API error: Failed to create campaign - {str(e)}")
     
     async def create_ad_set(self, ad_set_config: Dict[Any, Any], campaign_id: str) -> Dict[Any, Any]:
         """Create an ad set in Meta Ads"""
@@ -336,9 +335,8 @@ class MetaAdsAdapter:
                 }
                 
             except Exception as e:
-                logger.error(f"Failed to create Meta Ads ad set: {e}")
-                # Fallback to mock data if API fails
-                return await self._create_mock_ad_set(ad_set_config, campaign_id)
+                logger.error(f"Failed to create Meta Ads ad set: {e}", exc_info=True)
+                raise RuntimeError(f"Meta Ads API error: Failed to create ad set - {str(e)}")
     
     async def create_ad(self, ad_config: Dict[Any, Any], ad_set_id: str) -> Dict[Any, Any]:
         """Create an ad in Meta Ads"""
@@ -367,9 +365,8 @@ class MetaAdsAdapter:
                 }
                 
             except Exception as e:
-                logger.error(f"Failed to create Meta Ads ad: {e}")
-                # Fallback to mock data if API fails
-                return await self._create_mock_ad(ad_config, ad_set_id)
+                logger.error(f"Failed to create Meta Ads ad: {e}", exc_info=True)
+                raise RuntimeError(f"Meta Ads API error: Failed to create ad - {str(e)}")
     
     async def get_campaign_insights(self, campaign_id: str, start_date: str, end_date: str) -> Dict[Any, Any]:
         """Get campaign insights from Meta Ads"""
@@ -382,9 +379,8 @@ class MetaAdsAdapter:
                 return response
                 
             except Exception as e:
-                logger.error(f"Failed to get Meta Ads campaign insights: {e}")
-                # Fallback to mock data if API fails
-                return await self._get_mock_insights()
+                logger.error(f"Failed to get Meta Ads campaign insights: {e}", exc_info=True)
+                raise RuntimeError(f"Meta Ads API error: Failed to get campaign insights - {str(e)}")
     
     async def update_campaign_budget(self, campaign_id: str, budget_data: Dict[str, Any]) -> Dict[Any, Any]:
         """Update campaign budget in Meta Ads"""
@@ -397,71 +393,5 @@ class MetaAdsAdapter:
                 return response
                 
             except Exception as e:
-                logger.error(f"Failed to update Meta Ads campaign budget: {e}")
-                raise
-    
-    # Fallback mock methods for when API fails
-    async def _create_mock_campaign(self, campaign_config: Dict[Any, Any]) -> Dict[Any, Any]:
-        """Fallback mock campaign creation"""
-        campaign_id = str(uuid.uuid4())
-        campaign = {
-            'id': campaign_id,
-            'name': campaign_config.get('name', 'Unnamed Campaign'),
-            'objective': campaign_config.get('objective', 'CONVERSIONS'),
-            'status': 'active',
-            'created_at': datetime.utcnow().isoformat(),
-            'platform': 'meta_ads',
-            'mock_fallback': True
-        }
-        
-        logger.warning(f"Using mock fallback for Meta Ads campaign creation")
-        return campaign
-    
-    async def _create_mock_ad_set(self, ad_set_config: Dict[Any, Any], campaign_id: str) -> Dict[Any, Any]:
-        """Fallback mock ad set creation"""
-        ad_set_id = str(uuid.uuid4())
-        ad_set = {
-            'id': ad_set_id,
-            'name': ad_set_config.get('name', 'Unnamed Ad Set'),
-            'campaign_id': campaign_id,
-            'status': 'active',
-            'created_at': datetime.utcnow().isoformat(),
-            'platform': 'meta_ads',
-            'mock_fallback': True
-        }
-        
-        logger.warning(f"Using mock fallback for Meta Ads ad set creation")
-        return ad_set
-    
-    async def _create_mock_ad(self, ad_config: Dict[Any, Any], ad_set_id: str) -> Dict[Any, Any]:
-        """Fallback mock ad creation"""
-        ad_id = str(uuid.uuid4())
-        ad = {
-            'id': ad_id,
-            'name': ad_config.get('name', 'Unnamed Ad'),
-            'ad_set_id': ad_set_id,
-            'status': 'active',
-            'created_at': datetime.utcnow().isoformat(),
-            'platform': 'meta_ads',
-            'mock_fallback': True
-        }
-        
-        logger.warning(f"Using mock fallback for Meta Ads ad creation")
-        return ad
-    
-    async def _get_mock_insights(self) -> Dict[Any, Any]:
-        """Fallback mock insights"""
-        return {
-            'impressions': 15000,
-            'clicks': 450,
-            'spend': 1250.50,
-            'reach': 12000,
-            'frequency': 1.25,
-            'cpm': 8.34,
-            'ctr': 3.0,
-            'cpc': 2.78,
-            'conversions': 25,
-            'cost_per_conversion': 50.02,
-            'roas': 2.4,
-            'mock_fallback': True
-        }
+                logger.error(f"Failed to update Meta Ads campaign budget: {e}", exc_info=True)
+                raise RuntimeError(f"Meta Ads API error: Failed to update campaign budget - {str(e)}")

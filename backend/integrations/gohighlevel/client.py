@@ -289,9 +289,8 @@ class GoHighLevelAdapter:
                 }
                 
             except Exception as e:
-                logger.error(f"Failed to create GoHighLevel client: {e}")
-                # Fallback to mock data if API fails
-                return await self._create_mock_client(client_data)
+                logger.error(f"Failed to create GoHighLevel client: {e}", exc_info=True)
+                raise RuntimeError(f"GoHighLevel API error: Failed to create client - {str(e)}")
     
     async def create_campaign(self, campaign_config: Dict[Any, Any]) -> Dict[Any, Any]:
         """Create a marketing campaign in GoHighLevel"""
@@ -326,9 +325,8 @@ class GoHighLevelAdapter:
                 }
                 
             except Exception as e:
-                logger.error(f"Failed to create GoHighLevel campaign: {e}")
-                # Fallback to mock data if API fails
-                return await self._create_mock_campaign(campaign_config)
+                logger.error(f"Failed to create GoHighLevel campaign: {e}", exc_info=True)
+                raise RuntimeError(f"GoHighLevel API error: Failed to create campaign - {str(e)}")
     
     async def execute_workflow(self, workflow_config: Dict[Any, Any]) -> Dict[Any, Any]:
         """Execute a workflow in GoHighLevel"""
@@ -358,9 +356,8 @@ class GoHighLevelAdapter:
                 }
                 
             except Exception as e:
-                logger.error(f"Failed to execute GoHighLevel workflow: {e}")
-                # Fallback to mock data if API fails
-                return await self._create_mock_workflow(workflow_config)
+                logger.error(f"Failed to execute GoHighLevel workflow: {e}", exc_info=True)
+                raise RuntimeError(f"GoHighLevel API error: Failed to execute workflow - {str(e)}")
     
     async def get_analytics(self, start_date: str, end_date: str) -> Dict[Any, Any]:
         """Get analytics from GoHighLevel"""
@@ -373,65 +370,5 @@ class GoHighLevelAdapter:
                 return response
                 
             except Exception as e:
-                logger.error(f"Failed to get GoHighLevel analytics: {e}")
-                # Fallback to mock data if API fails
-                return await self._get_mock_analytics()
-    
-    # Fallback mock methods for when API fails
-    async def _create_mock_client(self, client_data: Dict[Any, Any]) -> Dict[Any, Any]:
-        """Fallback mock client creation"""
-        client_id = str(uuid.uuid4())
-        client = {
-            'id': client_id,
-            'name': client_data.get('name', 'Unnamed Client'),
-            'email': client_data.get('email'),
-            'phone': client_data.get('phone'),
-            'company': client_data.get('company'),
-            'status': 'active',
-            'created_at': datetime.utcnow().isoformat(),
-            'platform': 'gohighlevel',
-            'mock_fallback': True
-        }
-        
-        logger.warning(f"Using mock fallback for GoHighLevel client creation")
-        return client
-    
-    async def _create_mock_campaign(self, campaign_config: Dict[Any, Any]) -> Dict[Any, Any]:
-        """Fallback mock campaign creation"""
-        campaign_id = str(uuid.uuid4())
-        campaign = {
-            'id': campaign_id,
-            'name': campaign_config.get('name', 'Unnamed Campaign'),
-            'type': campaign_config.get('type', 'email'),
-            'status': 'active',
-            'created_at': datetime.utcnow().isoformat(),
-            'platform': 'gohighlevel',
-            'mock_fallback': True
-        }
-        
-        logger.warning(f"Using mock fallback for GoHighLevel campaign creation")
-        return campaign
-    
-    async def _create_mock_workflow(self, workflow_config: Dict[Any, Any]) -> Dict[Any, Any]:
-        """Fallback mock workflow creation"""
-        workflow_id = str(uuid.uuid4())
-        workflow = {
-            'id': workflow_id,
-            'name': workflow_config.get('name', 'Unnamed Workflow'),
-            'status': 'active',
-            'created_at': datetime.utcnow().isoformat(),
-            'platform': 'gohighlevel',
-            'mock_fallback': True
-        }
-        
-        logger.warning(f"Using mock fallback for GoHighLevel workflow creation")
-        return workflow
-    
-    async def _get_mock_analytics(self) -> Dict[Any, Any]:
-        """Fallback mock analytics"""
-        return {
-            'contacts': {'total': 150, 'new': 25},
-            'campaigns': {'total': 12, 'active': 8},
-            'workflows': {'total': 5, 'triggered': 45},
-            'mock_fallback': True
-        }
+                logger.error(f"Failed to get GoHighLevel analytics: {e}", exc_info=True)
+                raise RuntimeError(f"GoHighLevel API error: Failed to get analytics - {str(e)}")

@@ -172,8 +172,11 @@ class YouTubeAdsClient:
             return campaigns
             
         except Exception as e:
-            logger.error(f"Error getting YouTube campaigns: {e}")
-            return []
+            logger.error(f"Error getting YouTube campaigns: {e}", exc_info=True, extra={
+                "customer_id": customer,
+                "error_type": type(e).__name__
+            })
+            raise RuntimeError(f"YouTube Ads API error: Failed to get campaigns - {str(e)}")
     
     async def create_campaign(self, campaign_data: Dict[str, Any]) -> Optional[str]:
         """Create YouTube campaign"""
@@ -214,8 +217,11 @@ class YouTubeAdsClient:
             return campaign_id if campaign_id else None
             
         except Exception as e:
-            logger.error(f"Error creating YouTube campaign: {e}")
-            return None
+            logger.error(f"Error creating YouTube campaign: {e}", exc_info=True, extra={
+                "campaign_name": campaign_data.get("name"),
+                "error_type": type(e).__name__
+            })
+            raise RuntimeError(f"YouTube Ads API error: Failed to create campaign - {str(e)}")
     
     async def get_ads(self, campaign_id: str) -> List[YouTubeAd]:
         """Get YouTube ads for campaign"""
@@ -272,8 +278,11 @@ class YouTubeAdsClient:
             return ads
             
         except Exception as e:
-            logger.error(f"Error getting YouTube ads: {e}")
-            return []
+            logger.error(f"Error getting YouTube ads: {e}", exc_info=True, extra={
+                "campaign_id": campaign_id,
+                "error_type": type(e).__name__
+            })
+            raise RuntimeError(f"YouTube Ads API error: Failed to get ads - {str(e)}")
     
     async def create_ad(self, ad_data: Dict[str, Any]) -> Optional[str]:
         """Create YouTube ad"""
@@ -315,8 +324,12 @@ class YouTubeAdsClient:
             return ad_id if ad_id else None
             
         except Exception as e:
-            logger.error(f"Error creating YouTube ad: {e}")
-            return None
+            logger.error(f"Error creating YouTube ad: {e}", exc_info=True, extra={
+                "campaign_id": ad_data.get("campaign_id"),
+                "ad_name": ad_data.get("name"),
+                "error_type": type(e).__name__
+            })
+            raise RuntimeError(f"YouTube Ads API error: Failed to create ad - {str(e)}")
     
     async def get_campaign_insights(self, campaign_id: str, start_date: str, end_date: str) -> Dict[str, Any]:
         """Get YouTube campaign insights"""
@@ -383,8 +396,13 @@ class YouTubeAdsClient:
             return insights
             
         except Exception as e:
-            logger.error(f"Error getting YouTube campaign insights: {e}")
-            return {}
+            logger.error(f"Error getting YouTube campaign insights: {e}", exc_info=True, extra={
+                "campaign_id": campaign_id,
+                "start_date": start_date,
+                "end_date": end_date,
+                "error_type": type(e).__name__
+            })
+            raise RuntimeError(f"YouTube Ads API error: Failed to get campaign insights - {str(e)}")
     
     async def update_campaign_budget(self, campaign_id: str, budget: float) -> bool:
         """Update YouTube campaign budget"""
@@ -435,8 +453,12 @@ class YouTubeAdsClient:
             return True
             
         except Exception as e:
-            logger.error(f"Error updating YouTube campaign budget: {e}")
-            return False
+            logger.error(f"Error updating YouTube campaign budget: {e}", exc_info=True, extra={
+                "campaign_id": campaign_id,
+                "new_budget": budget,
+                "error_type": type(e).__name__
+            })
+            raise RuntimeError(f"YouTube Ads API error: Failed to update campaign budget - {str(e)}")
     
     async def pause_campaign(self, campaign_id: str) -> bool:
         """Pause YouTube campaign"""
@@ -467,8 +489,11 @@ class YouTubeAdsClient:
             return True
             
         except Exception as e:
-            logger.error(f"Error pausing YouTube campaign: {e}")
-            return False
+            logger.error(f"Error pausing YouTube campaign: {e}", exc_info=True, extra={
+                "campaign_id": campaign_id,
+                "error_type": type(e).__name__
+            })
+            raise RuntimeError(f"YouTube Ads API error: Failed to pause campaign - {str(e)}")
     
     async def resume_campaign(self, campaign_id: str) -> bool:
         """Resume YouTube campaign"""
@@ -499,8 +524,11 @@ class YouTubeAdsClient:
             return True
             
         except Exception as e:
-            logger.error(f"Error resuming YouTube campaign: {e}")
-            return False
+            logger.error(f"Error resuming YouTube campaign: {e}", exc_info=True, extra={
+                "campaign_id": campaign_id,
+                "error_type": type(e).__name__
+            })
+            raise RuntimeError(f"YouTube Ads API error: Failed to resume campaign - {str(e)}")
     
     async def get_customer_info(self) -> Dict[str, Any]:
         """Get YouTube Ads customer information"""
@@ -530,8 +558,11 @@ class YouTubeAdsClient:
             return customer_info
             
         except Exception as e:
-            logger.error(f"Error getting YouTube customer info: {e}")
-            return {}
+            logger.error(f"Error getting YouTube customer info: {e}", exc_info=True, extra={
+                "customer_id": self.customer_id,
+                "error_type": type(e).__name__
+            })
+            raise RuntimeError(f"YouTube Ads API error: Failed to get customer info - {str(e)}")
     
     async def close(self):
         """Close HTTP client"""

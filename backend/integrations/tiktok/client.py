@@ -119,8 +119,11 @@ class TikTokAdsClient:
             return campaigns
             
         except Exception as e:
-            logger.error(f"Error getting TikTok campaigns: {e}")
-            return []
+            logger.error(f"Error getting TikTok campaigns: {e}", exc_info=True, extra={
+                "advertiser_id": advertiser,
+                "error_type": type(e).__name__
+            })
+            raise RuntimeError(f"TikTok Ads API error: Failed to get campaigns - {str(e)}")
     
     async def create_campaign(self, campaign_data: Dict[str, Any]) -> Optional[str]:
         """Create TikTok campaign"""
@@ -154,8 +157,11 @@ class TikTokAdsClient:
             return str(campaign_id) if campaign_id else None
             
         except Exception as e:
-            logger.error(f"Error creating TikTok campaign: {e}")
-            return None
+            logger.error(f"Error creating TikTok campaign: {e}", exc_info=True, extra={
+                "campaign_name": campaign_data.get("name"),
+                "error_type": type(e).__name__
+            })
+            raise RuntimeError(f"TikTok Ads API error: Failed to create campaign - {str(e)}")
     
     async def get_ads(self, campaign_id: str) -> List[TikTokAd]:
         """Get TikTok ads for campaign"""
@@ -197,8 +203,11 @@ class TikTokAdsClient:
             return ads
             
         except Exception as e:
-            logger.error(f"Error getting TikTok ads: {e}")
-            return []
+            logger.error(f"Error getting TikTok ads: {e}", exc_info=True, extra={
+                "campaign_id": campaign_id,
+                "error_type": type(e).__name__
+            })
+            raise RuntimeError(f"TikTok Ads API error: Failed to get ads - {str(e)}")
     
     async def create_ad(self, ad_data: Dict[str, Any]) -> Optional[str]:
         """Create TikTok ad"""
@@ -232,8 +241,12 @@ class TikTokAdsClient:
             return str(ad_id) if ad_id else None
             
         except Exception as e:
-            logger.error(f"Error creating TikTok ad: {e}")
-            return None
+            logger.error(f"Error creating TikTok ad: {e}", exc_info=True, extra={
+                "campaign_id": ad_data.get("campaign_id"),
+                "ad_name": ad_data.get("name"),
+                "error_type": type(e).__name__
+            })
+            raise RuntimeError(f"TikTok Ads API error: Failed to create ad - {str(e)}")
     
     async def get_campaign_insights(self, campaign_id: str, start_date: str, end_date: str) -> Dict[str, Any]:
         """Get TikTok campaign insights"""
@@ -293,8 +306,13 @@ class TikTokAdsClient:
             return insights
             
         except Exception as e:
-            logger.error(f"Error getting TikTok campaign insights: {e}")
-            return {}
+            logger.error(f"Error getting TikTok campaign insights: {e}", exc_info=True, extra={
+                "campaign_id": campaign_id,
+                "start_date": start_date,
+                "end_date": end_date,
+                "error_type": type(e).__name__
+            })
+            raise RuntimeError(f"TikTok Ads API error: Failed to get campaign insights - {str(e)}")
     
     async def update_campaign_budget(self, campaign_id: str, budget: float) -> bool:
         """Update TikTok campaign budget"""
@@ -318,8 +336,12 @@ class TikTokAdsClient:
             return True
             
         except Exception as e:
-            logger.error(f"Error updating TikTok campaign budget: {e}")
-            return False
+            logger.error(f"Error updating TikTok campaign budget: {e}", exc_info=True, extra={
+                "campaign_id": campaign_id,
+                "new_budget": budget,
+                "error_type": type(e).__name__
+            })
+            raise RuntimeError(f"TikTok Ads API error: Failed to update campaign budget - {str(e)}")
     
     async def pause_campaign(self, campaign_id: str) -> bool:
         """Pause TikTok campaign"""
@@ -342,8 +364,11 @@ class TikTokAdsClient:
             return True
             
         except Exception as e:
-            logger.error(f"Error pausing TikTok campaign: {e}")
-            return False
+            logger.error(f"Error pausing TikTok campaign: {e}", exc_info=True, extra={
+                "campaign_id": campaign_id,
+                "error_type": type(e).__name__
+            })
+            raise RuntimeError(f"TikTok Ads API error: Failed to pause campaign - {str(e)}")
     
     async def resume_campaign(self, campaign_id: str) -> bool:
         """Resume TikTok campaign"""
@@ -366,8 +391,11 @@ class TikTokAdsClient:
             return True
             
         except Exception as e:
-            logger.error(f"Error resuming TikTok campaign: {e}")
-            return False
+            logger.error(f"Error resuming TikTok campaign: {e}", exc_info=True, extra={
+                "campaign_id": campaign_id,
+                "error_type": type(e).__name__
+            })
+            raise RuntimeError(f"TikTok Ads API error: Failed to resume campaign - {str(e)}")
     
     async def get_advertiser_info(self) -> Dict[str, Any]:
         """Get TikTok advertiser information"""
@@ -401,8 +429,11 @@ class TikTokAdsClient:
             return advertiser_info
             
         except Exception as e:
-            logger.error(f"Error getting TikTok advertiser info: {e}")
-            return {}
+            logger.error(f"Error getting TikTok advertiser info: {e}", exc_info=True, extra={
+                "advertiser_id": self.advertiser_id,
+                "error_type": type(e).__name__
+            })
+            raise RuntimeError(f"TikTok Ads API error: Failed to get advertiser info - {str(e)}")
     
     async def close(self):
         """Close HTTP client"""
