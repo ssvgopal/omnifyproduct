@@ -73,14 +73,14 @@ npm install
 cd frontend-user
 npm start
 ```
-Runs on: http://localhost:3000
+Runs on: http://localhost:4000
 
 **Admin Frontend:**
 ```bash
 cd frontend-admin
 npm start
 ```
-Runs on: http://localhost:3001
+Runs on: http://localhost:4001
 
 ---
 
@@ -94,8 +94,8 @@ docker compose up --build
 ```
 
 This will start:
-- `frontend-user` on port 3000
-- `frontend-admin` on port 3001
+- `frontend-user` on port 4000
+- `frontend-admin` on port 4001
 - Backend API on port 8000
 - All supporting services (MongoDB, Redis, etc.)
 

@@ -2,7 +2,7 @@
 # Optimized for production deployment with Nginx
 
 # ========== Stage 1: Builder ==========
-FROM node:18-alpine as builder
+FROM node:18 as builder
 
 # Set working directory
 WORKDIR /app
@@ -10,8 +10,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies (including devDependencies for build tools)
-RUN npm install
+# Install dependencies (remove lockfile to avoid platform issues)
+RUN rm -f package-lock.json && npm install
 
 # Copy source code
 COPY . .

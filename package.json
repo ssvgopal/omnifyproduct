@@ -1,21 +1,21 @@
 {
-  "name": "workspace",
+  "name": "omnify-product",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs",
-    "test": "tests"
-  },
+  "description": "Omnify Marketing Intelligence Platform",
+  "private": true,
+  "workspaces": [
+    "frontend-user",
+    "frontend-admin",
+    "packages/shared-ui"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev:user": "cd frontend-user && npm start",
+    "dev:admin": "cd frontend-admin && npm start",
+    "build:user": "cd frontend-user && npm run build",
+    "build:admin": "cd frontend-admin && npm run build",
+    "install:all": "npm install && cd frontend-user && npm install && cd ../frontend-admin && npm install && cd ../packages/shared-ui && npm install"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "react-scripts": "^5.0.1"
-  }
+  "license": "ISC"
 }

@@ -268,7 +268,7 @@ services:
       context: ./frontend-user
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "4000:80"
     env_file:
       - .env.user
     environment:
@@ -280,7 +280,7 @@ services:
       context: ./frontend-admin
       dockerfile: Dockerfile
     ports:
-      - "3001:3000"
+      - "4001:80"
     env_file:
       - .env.admin
     environment:
