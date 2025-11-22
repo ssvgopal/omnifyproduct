@@ -1,5 +1,5 @@
 import * as React from "react";
-import { cn } from "../../utils/utils";
+import { cn } from '@omnify/shared-ui/utils/utils.js';
 
 const Card = React.forwardRef(({ className, ...props }, ref) => (
   <div

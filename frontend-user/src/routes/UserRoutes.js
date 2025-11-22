@@ -1,9 +1,12 @@
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ErrorBoundary } from 'react-error-boundary';
+import Layout from '@/components/layout/Layout';
 
 // Lazy load pages
 const Landing = lazy(() => import('@/pages/Landing'));
+const Login = lazy(() => import('@/pages/Login'));
+const Register = lazy(() => import('@/pages/Register'));
 const Demo = lazy(() => import('@/pages/Demo'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Insights = lazy(() => import('@/pages/Insights'));
@@ -23,9 +26,14 @@ const PageLoader = () => (
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
-  // TODO: Implement authentication check
-  const isAuthenticated = true; // Placeholder
-  return isAuthenticated ? children : <Navigate to="/" replace />;
+  const token = localStorage.getItem('access_token');
+  const isAuthenticated = !!token;
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: { pathname: window.location.pathname } }} replace />;
+  }
+  
+  return children;
 };
 
 // Subscription Gate component
@@ -40,18 +48,20 @@ const UserRoutes = () => {
     <ErrorBoundary fallback={<div>Something went wrong</div>}>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-            {/* Public Routes */}
+            {/* Public Routes (without Layout) */}
             <Route path="/" element={<Landing />} />
-            <Route path="/demo" element={<Demo />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/features" element={<Features />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/demo" element={<Layout><Demo /></Layout>} />
+            <Route path="/pricing" element={<Layout><Pricing /></Layout>} />
+            <Route path="/features" element={<Layout><Features /></Layout>} />
             
-            {/* Authenticated User Routes */}
+            {/* Authenticated User Routes (with Layout) */}
             <Route 
               path="/dashboard" 
               element={
                 <ProtectedRoute>
-                  <Dashboard />
+                  <Layout><Dashboard /></Layout>
                 </ProtectedRoute>
               } 
             />
@@ -59,7 +69,7 @@ const UserRoutes = () => {
               path="/insights" 
               element={
                 <ProtectedRoute>
-                  <Insights />
+                  <Layout><Insights /></Layout>
                 </ProtectedRoute>
               } 
             />
@@ -67,7 +77,7 @@ const UserRoutes = () => {
               path="/workflows" 
               element={
                 <ProtectedRoute>
-                  <Workflows />
+                  <Layout><Workflows /></Layout>
                 </ProtectedRoute>
               } 
             />
@@ -76,7 +86,7 @@ const UserRoutes = () => {
               element={
                 <ProtectedRoute>
                   <SubscriptionGate>
-                    <Traces />
+                    <Layout><Traces /></Layout>
                   </SubscriptionGate>
                 </ProtectedRoute>
               } 
@@ -85,7 +95,7 @@ const UserRoutes = () => {
               path="/settings" 
               element={
                 <ProtectedRoute>
-                  <Settings />
+                  <Layout><Settings /></Layout>
                 </ProtectedRoute>
               } 
             />
@@ -93,7 +103,7 @@ const UserRoutes = () => {
               path="/profile" 
               element={
                 <ProtectedRoute>
-                  <Profile />
+                  <Layout><Profile /></Layout>
                 </ProtectedRoute>
               } 
             />

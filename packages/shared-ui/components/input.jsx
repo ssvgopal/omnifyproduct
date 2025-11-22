@@ -1,6 +1,6 @@
 import * as React from "react"
 
-import { cn } from "../../utils/utils"
+import { cn } from '@omnify/shared-ui/utils/utils.js'
 
 const Input = React.forwardRef(({ className, type, ...props }, ref) => {
   return (

@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import logging
+import os
 
 from models.agentkit_models import (
     AgentConfig, AgentExecutionRequest, AgentExecutionResponse,
@@ -16,10 +17,20 @@ from models.agentkit_models import (
 )
 from services.agentkit_service import AgentKitService
 from core.auth import get_current_user, get_current_organization
+from motor.motor_asyncio import AsyncIOMotorDatabase
+import os
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/agentkit", tags=["AgentKit"])
+
+# Import get_agentkit_service from agentkit_server to avoid circular imports
+try:
+    from agentkit_server import get_agentkit_service
+except ImportError:
+    # Fallback if not available (shouldn't happen in normal operation)
+    def get_agentkit_service() -> AgentKitService:
+        raise RuntimeError("AgentKit service not initialized - agentkit_server not imported")
 
 
 # ========== AGENT MANAGEMENT ENDPOINTS ==========
@@ -28,7 +39,7 @@ router = APIRouter(prefix="/api/agentkit", tags=["AgentKit"])
 async def create_agent(
     agent_config: AgentConfig,
     current_user: dict = Depends(get_current_user),
-    agentkit_service: AgentKitService = Depends()
+    agentkit_service: AgentKitService = Depends(get_agentkit_service)
 ):
     """Create a new AgentKit agent"""
     try:
@@ -48,7 +59,7 @@ async def create_agent(
 async def list_agents(
     agent_type: Optional[AgentType] = None,
     current_user: dict = Depends(get_current_user),
-    agentkit_service: AgentKitService = Depends()
+    agentkit_service: AgentKitService = Depends(get_agentkit_service)
 ):
     """List all agents for current organization"""
     try:
@@ -68,7 +79,7 @@ async def list_agents(
 async def get_agent(
     agent_id: str,
     current_user: dict = Depends(get_current_user),
-    agentkit_service: AgentKitService = Depends()
+    agentkit_service: AgentKitService = Depends(get_agentkit_service)
 ):
     """Get agent configuration"""
     try:
@@ -94,7 +105,7 @@ async def update_agent(
     agent_id: str,
     updates: Dict[str, Any],
     current_user: dict = Depends(get_current_user),
-    agentkit_service: AgentKitService = Depends()
+    agentkit_service: AgentKitService = Depends(get_agentkit_service)
 ):
     """Update agent configuration"""
     try:
@@ -124,7 +135,7 @@ async def update_agent(
 async def delete_agent(
     agent_id: str,
     current_user: dict = Depends(get_current_user),
-    agentkit_service: AgentKitService = Depends()
+    agentkit_service: AgentKitService = Depends(get_agentkit_service)
 ):
     """Delete (deactivate) an agent"""
     try:
@@ -154,7 +165,7 @@ async def execute_agent(
     input_data: Dict[str, Any],
     request: Request,
     current_user: dict = Depends(get_current_user),
-    agentkit_service: AgentKitService = Depends()
+    agentkit_service: AgentKitService = Depends(get_agentkit_service)
 ):
     """Execute an AgentKit agent"""
     try:
@@ -193,7 +204,7 @@ async def execute_agent(
 async def get_execution(
     execution_id: str,
     current_user: dict = Depends(get_current_user),
-    agentkit_service: AgentKitService = Depends()
+    agentkit_service: AgentKitService = Depends(get_agentkit_service)
 ):
     """Get agent execution details"""
     try:
@@ -223,7 +234,7 @@ async def list_agent_executions(
     limit: int = 50,
     offset: int = 0,
     current_user: dict = Depends(get_current_user),
-    agentkit_service: AgentKitService = Depends()
+    agentkit_service: AgentKitService = Depends(get_agentkit_service)
 ):
     """List recent executions for an agent"""
     try:
@@ -259,7 +270,7 @@ async def list_agent_executions(
 async def create_workflow(
     workflow: WorkflowDefinition,
     current_user: dict = Depends(get_current_user),
-    agentkit_service: AgentKitService = Depends()
+    agentkit_service: AgentKitService = Depends(get_agentkit_service)
 ):
     """Create a new AgentKit workflow"""
     try:
@@ -280,7 +291,7 @@ async def execute_workflow(
     workflow_id: str,
     input_data: Dict[str, Any],
     current_user: dict = Depends(get_current_user),
-    agentkit_service: AgentKitService = Depends()
+    agentkit_service: AgentKitService = Depends(get_agentkit_service)
 ):
     """Execute an AgentKit workflow"""
     try:
@@ -317,7 +328,7 @@ async def get_workflow_execution(
     workflow_id: str,
     execution_id: str,
     current_user: dict = Depends(get_current_user),
-    agentkit_service: AgentKitService = Depends()
+    agentkit_service: AgentKitService = Depends(get_agentkit_service)
 ):
     """Get workflow execution details"""
     try:
@@ -347,7 +358,7 @@ async def get_workflow_execution(
 async def run_compliance_check(
     check_type: str = "soc2",
     current_user: dict = Depends(get_current_user),
-    agentkit_service: AgentKitService = Depends()
+    agentkit_service: AgentKitService = Depends(get_agentkit_service)
 ):
     """Run compliance check for organization"""
     try:
@@ -373,7 +384,7 @@ async def get_audit_logs(
     limit: int = 100,
     offset: int = 0,
     current_user: dict = Depends(get_current_user),
-    agentkit_service: AgentKitService = Depends()
+    agentkit_service: AgentKitService = Depends(get_agentkit_service)
 ):
     """Get audit logs for organization (SOC 2 compliance)"""
     try:
@@ -416,7 +427,7 @@ async def get_audit_logs(
 async def get_agent_metrics(
     days: int = 30,
     current_user: dict = Depends(get_current_user),
-    agentkit_service: AgentKitService = Depends()
+    agentkit_service: AgentKitService = Depends(get_agentkit_service)
 ):
     """Get agent execution metrics for organization"""
     try:
@@ -451,7 +462,7 @@ async def get_agent_metrics(
 async def analyze_creative(
     input_data: CreativeIntelligenceInput,
     current_user: dict = Depends(get_current_user),
-    agentkit_service: AgentKitService = Depends()
+    agentkit_service: AgentKitService = Depends(get_agentkit_service)
 ):
     """Execute Creative Intelligence Agent"""
     try:
@@ -477,7 +488,7 @@ async def analyze_creative(
 async def execute_marketing_automation(
     input_data: MarketingAutomationInput,
     current_user: dict = Depends(get_current_user),
-    agentkit_service: AgentKitService = Depends()
+    agentkit_service: AgentKitService = Depends(get_agentkit_service)
 ):
     """Execute Marketing Automation Agent"""
     try:
@@ -503,7 +514,7 @@ async def execute_marketing_automation(
 async def execute_client_management(
     input_data: ClientManagementInput,
     current_user: dict = Depends(get_current_user),
-    agentkit_service: AgentKitService = Depends()
+    agentkit_service: AgentKitService = Depends(get_agentkit_service)
 ):
     """Execute Client Management Agent"""
     try:
@@ -529,7 +540,7 @@ async def execute_client_management(
 async def analyze_analytics(
     input_data: AnalyticsInput,
     current_user: dict = Depends(get_current_user),
-    agentkit_service: AgentKitService = Depends()
+    agentkit_service: AgentKitService = Depends(get_agentkit_service)
 ):
     """Execute Analytics Agent"""
     try:

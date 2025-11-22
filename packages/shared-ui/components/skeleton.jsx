@@ -1,4 +1,4 @@
-import { cn } from "../../utils/utils"
+import { cn } from '@omnify/shared-ui/utils/utils.js'
 
 function Skeleton({
   className,

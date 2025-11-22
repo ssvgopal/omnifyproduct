@@ -152,7 +152,7 @@ services:
     container_name: omnify-frontend-user
     restart: unless-stopped
     ports:
-      - "3000:80"
+      - "4000:80"
     depends_on:
       - backend
     networks:
@@ -174,7 +174,7 @@ services:
     container_name: omnify-frontend-admin
     restart: unless-stopped
     ports:
-      - "3001:80"
+      - "4001:80"
     depends_on:
       - backend
     networks:

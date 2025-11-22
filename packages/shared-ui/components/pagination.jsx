@@ -1,8 +1,8 @@
 import * as React from "react"
 import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react"
 
-import { cn } from "../../utils/utils"
-import { buttonVariants } from "@/components/ui/button";
+import { cn } from '@omnify/shared-ui/utils/utils.js'
+import { buttonVariants } from "./button";
 
 const Pagination = ({
   className,

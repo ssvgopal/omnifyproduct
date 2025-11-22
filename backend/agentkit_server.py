@@ -447,6 +447,12 @@ def get_db():
         raise RuntimeError("Database not initialized")
     return db
 
+def get_agentkit_service() -> 'AgentKitService':
+    """Dependency to get AgentKit service instance"""
+    from services.agentkit_service import AgentKitService
+    agentkit_api_key = os.getenv("AGENTKIT_API_KEY", "dev-key")
+    return AgentKitService(db, agentkit_api_key)
+
 
 # Import MFA, RBAC, Email Verification, Session, Integration, Brain Module, and Metrics routes
 from api.mfa_routes import router as mfa_router

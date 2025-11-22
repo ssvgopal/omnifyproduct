@@ -1,4 +1,4 @@
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from '@omnify/shared-ui/hooks/use-toast.js'
 import {
   Toast,
   ToastClose,
@@ -6,7 +6,7 @@ import {
   ToastProvider,
   ToastTitle,
   ToastViewport,
-} from "@/components/ui/toast"
+} from "./toast"
 
 export function Toaster() {
   const { toasts } = useToast()
