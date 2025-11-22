@@ -144,12 +144,12 @@ services:
     volumes:
       - ./backend:/app
 
-  # Frontend
-  frontend:
+  # User-Facing Frontend
+  frontend-user:
     build:
-      context: ./frontend
+      context: ./frontend-user
       dockerfile: Dockerfile
-    container_name: omnify-frontend
+    container_name: omnify-frontend-user
     restart: unless-stopped
     ports:
       - "3000:80"
@@ -162,6 +162,32 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_ENV=production
+
+  # Admin Backoffice Frontend
+  frontend-admin:
+    build:
+      context: ./frontend-admin
+      dockerfile: Dockerfile
+    container_name: omnify-frontend-admin
+    restart: unless-stopped
+    ports:
+      - "3001:80"
+    depends_on:
+      - backend
+    networks:
+      - omnify-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_ENV=production
+      - REACT_APP_ADMIN_MODE=true
 
   # Loki for Log Aggregation (already exists from previous implementation)
   loki:
