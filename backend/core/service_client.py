@@ -2,13 +2,30 @@
 Service Client - HTTP client for inter-service communication
 Enables services to call each other in microservices mode
 Falls back to direct calls in monolith mode
+
+Features:
+- Service-to-service authentication (JWT)
+- Retry logic with exponential backoff
+- Circuit breaker pattern
+- Correlation IDs for tracing
 """
 
 import os
 import httpx
 import logging
+import uuid
 from typing import Dict, Any, Optional
 from enum import Enum
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+    RetryError
+)
+
+from backend.core.service_auth import get_service_auth, ServiceAuth
+from backend.core.circuit_breaker import get_circuit_breaker, CircuitBreakerConfig
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +42,7 @@ class ServiceType(str, Enum):
 
 
 class ServiceClient:
-    """Client for calling other services"""
+    """Client for calling other services with resilience patterns"""
     
     # Service URLs (can be overridden by environment variables)
     SERVICE_URLS = {
@@ -41,6 +58,19 @@ class ServiceClient:
     def __init__(self):
         self.deployment_mode = os.getenv("DEPLOYMENT_MODE", "monolith")
         self.timeout = float(os.getenv("SERVICE_CLIENT_TIMEOUT", "30.0"))
+        self.service_auth = get_service_auth()
+        self.service_name = self.service_auth.get_service_name()
+        
+        # Retry configuration
+        self.max_retries = int(os.getenv("SERVICE_CLIENT_MAX_RETRIES", "3"))
+        self.retry_backoff_base = float(os.getenv("SERVICE_CLIENT_RETRY_BACKOFF", "2.0"))
+        
+        # Circuit breaker configuration
+        self.circuit_breaker_config = CircuitBreakerConfig(
+            failure_threshold=int(os.getenv("CIRCUIT_BREAKER_FAILURE_THRESHOLD", "5")),
+            success_threshold=int(os.getenv("CIRCUIT_BREAKER_SUCCESS_THRESHOLD", "2")),
+            timeout_seconds=int(os.getenv("CIRCUIT_BREAKER_TIMEOUT", "60")),
+        )
     
     async def call_service(
         self,
@@ -49,10 +79,11 @@ class ServiceClient:
         method: str = 'GET',
         data: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
-        params: Optional[Dict[str, Any]] = None
+        params: Optional[Dict[str, Any]] = None,
+        correlation_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Call another service
+        Call another service with retry logic, circuit breaker, and authentication
         
         Args:
             service_type: Type of service to call
@@ -61,9 +92,13 @@ class ServiceClient:
             data: Request body data
             headers: Additional headers
             params: Query parameters
+            correlation_id: Optional correlation ID for tracing
         
         Returns:
             Response data as dictionary
+        
+        Raises:
+            Exception: If service call fails after retries or circuit is open
         """
         if self.deployment_mode == "monolith":
             # In monolith mode, services are in the same process
@@ -76,15 +111,39 @@ class ServiceClient:
         
         url = f"{base_url.rstrip('/')}{endpoint}"
         
+        # Generate correlation ID if not provided
+        if not correlation_id:
+            correlation_id = str(uuid.uuid4())
+        
+        # Get circuit breaker for this service
+        circuit_breaker = get_circuit_breaker(
+            f"{service_type.value}_service",
+            self.circuit_breaker_config
+        )
+        
+        # Generate service token for authentication
+        service_token = self.service_auth.generate_service_token(
+            self.service_name,
+            service_type.value
+        )
+        
         # Add default headers
         request_headers = {
             "Content-Type": "application/json",
             "User-Agent": "Omnify-ServiceClient/1.0",
+            "X-Correlation-ID": correlation_id,
+            "X-Service-Name": self.service_name,
         }
+        
+        # Add service authentication token
+        if service_token:
+            request_headers["Authorization"] = f"Bearer {service_token}"
+        
         if headers:
             request_headers.update(headers)
         
-        try:
+        # Define the actual HTTP call function with retry
+        async def _make_request():
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.request(
                     method=method.upper(),
@@ -93,18 +152,64 @@ class ServiceClient:
                     headers=request_headers,
                     params=params
                 )
+                # Don't retry on 4xx errors (client errors)
+                if response.status_code >= 400 and response.status_code < 500:
+                    response.raise_for_status()
+                # Retry on 5xx errors and network errors
                 response.raise_for_status()
                 return response.json()
         
+        # Retry wrapper - only retries on network errors and 5xx errors
+        @retry(
+            stop=stop_after_attempt(self.max_retries),
+            wait=wait_exponential(multiplier=self.retry_backoff_base, min=1, max=10),
+            retry=retry_if_exception_type((httpx.RequestError,)),
+            reraise=True
+        )
+        async def _make_request_with_retry():
+            try:
+                return await _make_request()
+            except httpx.HTTPStatusError as e:
+                # Only retry on 5xx errors
+                if e.response.status_code >= 500:
+                    raise httpx.RequestError("Server error, retrying", request=e.request) from e
+                # Don't retry on 4xx errors
+                raise
+        
+        # Call with circuit breaker protection
+        try:
+            result = await circuit_breaker.call(_make_request_with_retry)
+            logger.debug(
+                f"Service call successful: {service_type.value} {endpoint} "
+                f"[correlation_id={correlation_id}]"
+            )
+            return result
+        
+        except RetryError as e:
+            logger.error(
+                f"Service call failed after retries: {service_type.value} {endpoint} "
+                f"[correlation_id={correlation_id}]: {e}"
+            )
+            raise Exception(f"Service {service_type.value} unavailable after retries") from e
         except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error calling {service_type.value}: {e.response.status_code} - {e.response.text}")
+            logger.error(
+                f"HTTP error calling {service_type.value}: {e.response.status_code} - {e.response.text} "
+                f"[correlation_id={correlation_id}]"
+            )
             raise
         except httpx.RequestError as e:
-            logger.error(f"Request error calling {service_type.value}: {str(e)}")
+            logger.error(
+                f"Request error calling {service_type.value}: {str(e)} "
+                f"[correlation_id={correlation_id}]"
+            )
             raise
         except Exception as e:
-            logger.error(f"Unexpected error calling {service_type.value}: {str(e)}")
+            logger.error(
+                f"Unexpected error calling {service_type.value}: {str(e)} "
+                f"[correlation_id={correlation_id}]"
+            )
             raise
+    
     
     async def call_auth_service(
         self,

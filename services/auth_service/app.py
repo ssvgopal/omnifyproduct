@@ -58,12 +58,10 @@ async def lifespan(app: FastAPI):
     client = AsyncIOMotorClient(mongo_url)
     db = client[db_name]
     
-    # Make db available globally for routes that import it from agentkit_server
-    # Create a minimal agentkit_server module in memory
-    import types
-    agentkit_server_module = types.ModuleType('agentkit_server')
-    agentkit_server_module.db = db
-    sys.modules['agentkit_server'] = agentkit_server_module
+    # Make db available via dependency injection
+    # Routes should use get_db() dependency instead of importing from agentkit_server
+    from backend.database.connection import set_global_db
+    set_global_db(db)
     
     logger.info("✅ Auth Service started")
     yield
@@ -100,13 +98,33 @@ app.include_router(session_routes.router)
 
 @app.get("/health")
 async def health():
-    """Health check endpoint"""
-    return {
+    """Health check endpoint with dependency verification"""
+    health_status = {
         "status": "healthy",
         "service": service_type.value,
         "routes": len(app.routes),
-        "version": "1.0.0"
+        "version": "1.0.0",
+        "checks": {}
     }
+    
+    # Check database connectivity
+    try:
+        if db is not None:
+            await db.command("ping")
+            health_status["checks"]["database"] = "healthy"
+        else:
+            health_status["checks"]["database"] = "unavailable"
+            health_status["status"] = "unhealthy"
+    except Exception as e:
+        health_status["checks"]["database"] = f"unhealthy: {str(e)}"
+        health_status["status"] = "unhealthy"
+    
+    # Return appropriate status code
+    from fastapi import status
+    status_code = status.HTTP_200_OK if health_status["status"] == "healthy" else status.HTTP_503_SERVICE_UNAVAILABLE
+    
+    from fastapi.responses import JSONResponse
+    return JSONResponse(content=health_status, status_code=status_code)
 
 @app.get("/")
 async def root():
