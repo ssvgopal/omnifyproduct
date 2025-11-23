@@ -9,10 +9,13 @@
     "packages/shared-ui"
   ],
   "scripts": {
+    "dev": "cd frontend && npm start",
     "dev:user": "cd frontend-user && npm start",
     "dev:admin": "cd frontend-admin && npm start",
+    "dev:brain": "cd omnify-brain && npm run dev",
     "build:user": "cd frontend-user && npm run build",
     "build:admin": "cd frontend-admin && npm run build",
+    "build:brain": "cd omnify-brain && npm run build",
     "install:all": "npm install && cd frontend-user && npm install && cd ../frontend-admin && npm install && cd ../packages/shared-ui && npm install"
   },
   "keywords": [],
