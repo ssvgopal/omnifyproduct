@@ -1,0 +1,109 @@
+{
+  "timestamp": "2025-11-23T18:53:12.569Z",
+  "memory": {
+    "totalSpend": 108284,
+    "totalRevenue": 262539,
+    "blendedRoas": 2.42,
+    "channels": [
+      {
+        "id": "ch_meta",
+        "name": "Meta Ads",
+        "roas": 3.23,
+        "status": "winner",
+        "contribution": 56.99457985289804
+      },
+      {
+        "id": "ch_google",
+        "name": "Google Ads",
+        "roas": 2.11,
+        "status": "neutral",
+        "contribution": 19.73078285511867
+      },
+      {
+        "id": "ch_tiktok",
+        "name": "TikTok Ads",
+        "roas": 1.63,
+        "status": "loser",
+        "contribution": 23.274637291983286
+      }
+    ],
+    "ltvRoas": 3.03
+  },
+  "oracle": {
+    "globalRiskScore": 45,
+    "riskLevel": "critical",
+    "risks": [
+      {
+        "id": "risk_fatigue_cr_c12",
+        "type": "creative_fatigue",
+        "severity": "high",
+        "message": "Creative Creative C12 - UGC Testimonial is showing signs of fatigue. ROAS dropped to 1.9.",
+        "entityId": "cr_c12",
+        "predictionDays": 3
+      },
+      {
+        "id": "risk_fatigue_cr_t01",
+        "type": "creative_fatigue",
+        "severity": "high",
+        "message": "Creative TikTok Trend #1 is showing signs of fatigue. ROAS dropped to 1.2.",
+        "entityId": "cr_t01",
+        "predictionDays": 3
+      },
+      {
+        "id": "risk_decay_ch_tiktok",
+        "type": "roi_decay",
+        "severity": "medium",
+        "message": "Channel tiktok efficiency is decaying. Recent ROAS: 0.90.",
+        "entityId": "ch_tiktok"
+      },
+      {
+        "id": "risk_ltv_drift",
+        "type": "ltv_drift",
+        "severity": "low",
+        "message": "New cohorts showing 5% lower LTV than Q3 baseline.",
+        "predictionDays": 14
+      }
+    ]
+  },
+  "curiosity": {
+    "topActions": [
+      {
+        "id": "act_pause_cr_c12",
+        "type": "pause_creative",
+        "title": "Pause Creative cr_c12",
+        "description": "Creative is fatigued (ROAS < 2.0). Pause to save budget.",
+        "impact": "+$450/day saved",
+        "confidence": "high",
+        "urgency": "high",
+        "entities": [
+          "cr_c12"
+        ]
+      },
+      {
+        "id": "act_pause_cr_t01",
+        "type": "pause_creative",
+        "title": "Pause Creative cr_t01",
+        "description": "Creative is fatigued (ROAS < 2.0). Pause to save budget.",
+        "impact": "+$450/day saved",
+        "confidence": "high",
+        "urgency": "high",
+        "entities": [
+          "cr_t01"
+        ]
+      },
+      {
+        "id": "act_shift_ch_tiktok",
+        "type": "shift_budget",
+        "title": "Shift Budget from tiktok",
+        "description": "Channel efficiency is decaying. Shift spend to top performers.",
+        "impact": "+$1,200/week",
+        "confidence": "medium",
+        "urgency": "medium",
+        "entities": [
+          "ch_tiktok"
+        ]
+      }
+    ],
+    "totalOpportunity": "+$12,450/mo"
+  }
+}
