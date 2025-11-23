@@ -1,0 +1,65 @@
+'use client';
+
+import { useBrainState } from '@/lib/hooks/useBrainState';
+import { LoadingState } from '@/components/shared/LoadingState';
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
+import { TopBar } from '@/components/dashboard/TopBar';
+import { MemoryCard } from '@/components/dashboard/MemoryCard';
+import { OracleCard } from '@/components/dashboard/OracleCard';
+import { CuriosityCard } from '@/components/dashboard/CuriosityCard';
+
+export default function DashboardPage() {
+  const { brainState, isLoading, error, recompute } = useBrainState();
+
+  if (isLoading) {
+    return <LoadingState />;
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Error Loading Dashboard</h2>
+          <p className="text-gray-600 mb-6">{error.message}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!brainState) {
+    return null;
+  }
+
+  return (
+    <ErrorBoundary>
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <TopBar state={brainState} onRefresh={recompute} />
+
+        <main className="flex-1 p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-140px)]">
+            {/* Column 1: MEMORY */}
+            <div className="h-full">
+              <MemoryCard data={brainState.memory} />
+            </div>
+
+            {/* Column 2: ORACLE */}
+            <div className="h-full">
+              <OracleCard data={brainState.oracle} />
+            </div>
+
+            {/* Column 3: CURIOSITY */}
+            <div className="h-full">
+              <CuriosityCard data={brainState.curiosity} />
+            </div>
+          </div>
+        </main>
+      </div>
+    </ErrorBoundary>
+  );
+}

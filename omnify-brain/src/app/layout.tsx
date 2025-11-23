@@ -1,14 +1,7 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+'use client';
+
+import { SessionProvider } from 'next-auth/react';
 import './globals.css';
-import { PersonaProvider } from '@/lib/persona-context';
-
-const inter = Inter({ subsets: ['latin'] });
-
-export const metadata: Metadata = {
-  title: 'Omnify Brain',
-  description: 'AI Marketing Intelligence Layer',
-};
 
 export default function RootLayout({
   children,
@@ -17,10 +10,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
-        <PersonaProvider>
+      <body>
+        <SessionProvider>
           {children}
-        </PersonaProvider>
+        </SessionProvider>
       </body>
     </html>
   );
