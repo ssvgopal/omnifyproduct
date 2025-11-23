@@ -155,3 +155,4 @@ REACT_APP_DEBUG=true
 The frontend is now properly set up and ready to use!
 
 
+

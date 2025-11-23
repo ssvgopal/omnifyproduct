@@ -1,0 +1,41 @@
+[
+  {
+    "id": "cr_c12",
+    "name": "Creative C12 - UGC Testimonial",
+    "channelId": "ch_meta",
+    "spend": 5000,
+    "revenue": 9500,
+    "impressions": 100000,
+    "clicks": 2500,
+    "ctr": 0.025,
+    "roas": 1.9,
+    "status": "active",
+    "launchDate": "2023-10-01"
+  },
+  {
+    "id": "cr_c13",
+    "name": "Creative C13 - Product Shot",
+    "channelId": "ch_meta",
+    "spend": 5000,
+    "revenue": 14000,
+    "impressions": 100000,
+    "clicks": 2500,
+    "ctr": 0.025,
+    "roas": 2.8,
+    "status": "active",
+    "launchDate": "2023-10-01"
+  },
+  {
+    "id": "cr_t01",
+    "name": "TikTok Trend #1",
+    "channelId": "ch_tiktok",
+    "spend": 5000,
+    "revenue": 6000,
+    "impressions": 100000,
+    "clicks": 2500,
+    "ctr": 0.025,
+    "roas": 1.2,
+    "status": "active",
+    "launchDate": "2023-10-01"
+  }
+]
