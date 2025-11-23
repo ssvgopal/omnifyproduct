@@ -463,3 +463,4 @@ The hackathon MVP scope is **not a limitation—it's a strategic unlock** that:
 
 **Timeline**: 6 months to $1M+ ARR, 18 months to $5M+ ARR
 
+

@@ -418,3 +418,4 @@ db.users.findOne({ email: "test@example.com" })
 - **Database Schema**: `backend/database/mongodb_schema.py`
 - **API Service**: `frontend-user/src/services/api.js`
 
+
