@@ -11,9 +11,10 @@ from core.gateway import gateway
 from core.auth import auth_service, AuthService
 from core.rate_limiter import rate_limiter
 
-# Import platform adapters
-from platform_adapters.agentkit_adapter import agentkit_adapter
-from platform_adapters.gohighlevel_adapter import gohighlevel_adapter
+# Import platform adapters (MVP only)
+# Phase 1 deprecated adapters (archived)
+# from platform_adapters.agentkit_adapter import agentkit_adapter
+# from platform_adapters.gohighlevel_adapter import gohighlevel_adapter
 from platform_adapters.custom_adapter import custom_adapter
 
 # Import brain logic modules
@@ -53,7 +54,7 @@ async def root():
     return {
         "message": "Omnify Cloud Connect - Unified Multi-Platform Solution",
         "version": "1.0.0",
-        "platforms": ["AgentKit", "GoHighLevel", "Custom"],
+        "platforms": ["Custom"],  # MVP only - AgentKit/GoHighLevel archived
         "status": "operational"
     }
 

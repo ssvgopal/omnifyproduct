@@ -11,7 +11,8 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
 from enum import Enum
 import uuid
-from motor.motor_asyncio import AsyncIOMotorClient
+# Phase 1 deprecated - MongoDB archived (MVP uses Supabase)
+# from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field
 import aiohttp
 from celery import Celery
@@ -130,10 +131,11 @@ class StepExecution:
 class WorkflowEngine:
     """Core workflow execution engine"""
     
-    def __init__(self, db: AsyncIOMotorClient, redis_client: redis.Redis, celery_app: Celery):
-        self.db = db
+    def __init__(self, db=None, redis_client: redis.Redis=None, celery_app=None):
+        # Phase 1/3 deprecated - MongoDB and Celery archived for MVP
+        self.db = None  # Phase 1: MongoDB archived
         self.redis = redis_client
-        self.celery = celery_app
+        self.celery = None  # Phase 3: Celery archived
         self.action_handlers = self._initialize_action_handlers()
         self.condition_evaluators = self._initialize_condition_evaluators()
     
@@ -859,10 +861,11 @@ class WorkflowEngine:
 class WorkflowTriggerManager:
     """Manages workflow triggers and scheduling"""
     
-    def __init__(self, db: AsyncIOMotorClient, redis_client: redis.Redis, celery_app: Celery):
-        self.db = db
+    def __init__(self, db=None, redis_client: redis.Redis=None, celery_app=None):
+        # Phase 1/3 deprecated - MongoDB and Celery archived for MVP
+        self.db = None  # Phase 1: MongoDB archived
         self.redis = redis_client
-        self.celery = celery_app
+        self.celery = None  # Phase 3: Celery archived
         self.active_triggers = {}
     
     async def create_trigger(self, trigger_data: Dict[str, Any]) -> str:
@@ -1040,10 +1043,11 @@ class WorkflowTriggerManager:
 class AdvancedAutomationService:
     """Main service for advanced automation workflows"""
     
-    def __init__(self, db: AsyncIOMotorClient, redis_client: redis.Redis, celery_app: Celery):
-        self.db = db
+    def __init__(self, db=None, redis_client: redis.Redis=None, celery_app=None):
+        # Phase 1/3 deprecated - MongoDB and Celery archived for MVP
+        self.db = None  # Phase 1: MongoDB archived
         self.redis = redis_client
-        self.celery = celery_app
+        self.celery = None  # Phase 3: Celery archived
         self.workflow_engine = WorkflowEngine(db, redis_client, celery_app)
         self.trigger_manager = WorkflowTriggerManager(db, redis_client, celery_app)
     

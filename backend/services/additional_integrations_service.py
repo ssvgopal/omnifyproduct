@@ -13,7 +13,8 @@ from enum import Enum
 import uuid
 import aiohttp
 import requests
-from motor.motor_asyncio import AsyncIOMotorClient
+# Phase 1 deprecated - MongoDB archived (MVP uses Supabase)
+# from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field
 import redis
 import hashlib
@@ -206,7 +207,7 @@ class HubSpotIntegration:
             return False
     
     async def get_contacts(self, limit: int = 100) -> List[Dict[str, Any]]:
-        """Get contacts from HubSpot"""
+        """Get contacts (Phase 2 - HubSpot archived)"""
         try:
             params = {"limit": limit}
             response = await self._make_request("GET", "/crm/v3/objects/contacts", params=params)
@@ -656,8 +657,9 @@ class ZapierIntegration:
 class AdditionalIntegrationsService:
     """Main service for additional integrations"""
     
-    def __init__(self, db: AsyncIOMotorClient, redis_client: redis.Redis):
-        self.db = db
+    def __init__(self, db=None, redis_client: redis.Redis=None):
+        # Phase 1 deprecated - MongoDB archived (MVP uses Supabase)
+        self.db = None  # Phase 1: MongoDB archived
         self.redis = redis_client
         self.integrations = {}
         self._initialize_integrations()
@@ -947,7 +949,8 @@ class AdditionalIntegrationsService:
 # Global instance
 additional_integrations_service = None
 
-def get_additional_integrations_service(db: AsyncIOMotorClient, redis_client: redis.Redis) -> AdditionalIntegrationsService:
+def get_additional_integrations_service(db=None, redis_client: redis.Redis=None) -> AdditionalIntegrationsService:
+    # Phase 1 deprecated - MongoDB archived (MVP uses Supabase)
     """Get additional integrations service instance"""
     global additional_integrations_service
     if additional_integrations_service is None:

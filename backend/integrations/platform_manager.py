@@ -23,18 +23,20 @@ from services.production_tenant_manager import get_tenant_manager
 from services.production_rate_limiter import production_rate_limiter
 from services.cost_guardrails import cost_guardrails
 
-# Import platform integrations
+# Import platform integrations (MVP only)
 from integrations.google_ads.client import GoogleAdsAdapter
 from integrations.meta_ads.client import MetaAdsAdapter
-from integrations.gohighlevel.client import GoHighLevelAdapter
-from integrations.linkedin.client import LinkedInAdsAdapter
 from integrations.tiktok.client import TikTokAdsAdapter
-from integrations.youtube.client import YouTubeAdsAdapter
 from integrations.shopify.client import ShopifyIntegration
-from integrations.stripe.client import StripeAdapter
-from integrations.triplewhale.client import TripleWhaleAdapter
-from integrations.hubspot.client import HubSpotAdapter
-from integrations.klaviyo.client import KlaviyoAdapter
+
+# Phase 2 integrations (archived - can be restored if needed)
+# from integrations.gohighlevel.client import GoHighLevelAdapter
+# from integrations.linkedin.client import LinkedInAdsAdapter
+# from integrations.youtube.client import YouTubeAdsAdapter
+# from integrations.stripe.client import StripeAdapter
+# from integrations.triplewhale.client import TripleWhaleAdapter
+# from integrations.hubspot.client import HubSpotAdapter
+# from integrations.klaviyo.client import KlaviyoAdapter
 
 class Platform(Enum):
     """Supported advertising and marketing platforms"""
@@ -43,10 +45,14 @@ class Platform(Enum):
     LINKEDIN_ADS = "linkedin_ads"
     TIKTOK_ADS = "tiktok_ads"
     YOUTUBE_ADS = "youtube_ads"
-    GOHIGHLEVEL = "gohighlevel"  # LOW PRIORITY - Prefer TripleWhale/HubSpot/Klaviyo for DTC brands
-    TRIPLEWHALE = "triplewhale"  # PRIMARY: Attribution & Analytics for DTC brands
-    HUBSPOT = "hubspot"  # SECONDARY: CRM & Marketing Automation
-    KLAVIYO = "klaviyo"  # TERTIARY: Lifecycle Marketing & Retention
+    # Phase 2 platforms (archived - can be restored if needed)
+    # GOHIGHLEVEL = "gohighlevel"  # LOW PRIORITY - Prefer TripleWhale/HubSpot/Klaviyo for DTC brands
+    # TRIPLEWHALE = "triplewhale"  # PRIMARY: Attribution & Analytics for DTC brands
+    # HUBSPOT = "hubspot"  # SECONDARY: CRM & Marketing Automation
+    # KLAVIYO = "klaviyo"  # TERTIARY: Lifecycle Marketing & Retention
+    # LINKEDIN_ADS = "linkedin_ads"
+    # YOUTUBE_ADS = "youtube_ads"
+    # STRIPE = "stripe"
     SHOPIFY = "shopify"
     STRIPE = "stripe"
     GOOGLE_ANALYTICS = "google_analytics"
@@ -60,15 +66,16 @@ class PlatformIntegrationsManager:
         self.platforms = {
             Platform.GOOGLE_ADS: GoogleAdsAdapter(),
             Platform.META_ADS: MetaAdsAdapter(),
-            Platform.LINKEDIN_ADS: LinkedInAdsAdapter(),
             Platform.TIKTOK_ADS: TikTokAdsAdapter(),
-            Platform.YOUTUBE_ADS: YouTubeAdsAdapter(),
-            Platform.GOHIGHLEVEL: GoHighLevelAdapter(),  # LOW PRIORITY - kept for backward compatibility
-            Platform.TRIPLEWHALE: TripleWhaleAdapter(),  # PRIMARY replacement
-            Platform.HUBSPOT: HubSpotAdapter(),  # SECONDARY replacement
-            Platform.KLAVIYO: KlaviyoAdapter(),  # TERTIARY replacement
             Platform.SHOPIFY: ShopifyIntegration(),
-            Platform.STRIPE: StripeAdapter()
+            # Phase 2 platforms (archived - can be restored if needed)
+            # Platform.LINKEDIN_ADS: LinkedInAdsAdapter(),
+            # Platform.YOUTUBE_ADS: YouTubeAdsAdapter(),
+            # Platform.GOHIGHLEVEL: GoHighLevelAdapter(),  # LOW PRIORITY - kept for backward compatibility
+            # Platform.TRIPLEWHALE: TripleWhaleAdapter(),  # PRIMARY replacement
+            # Platform.HUBSPOT: HubSpotAdapter(),  # SECONDARY replacement
+            # Platform.KLAVIYO: KlaviyoAdapter(),  # TERTIARY replacement
+            # Platform.STRIPE: StripeAdapter()
         }
 
         # Platform capabilities mapping

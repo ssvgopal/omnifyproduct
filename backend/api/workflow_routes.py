@@ -1,16 +1,23 @@
 """
 Advanced Automation Workflows API Routes
 Workflow creation, execution, monitoring, and management
+
+⚠️ PHASE 2 FEATURE - NOT IN MVP SCOPE
+This module requires Celery (Phase 3 archived) and MongoDB (Phase 1 archived).
+MVP uses Vercel Cron for scheduled tasks, not complex workflow automation.
+All endpoints return 501 NOT_IMPLEMENTED for MVP.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from typing import Dict, List, Any, Optional
 from datetime import datetime
-from motor.motor_asyncio import AsyncIOMotorDatabase
+# Phase 1 deprecated - MongoDB archived (MVP uses Supabase)
+# from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
 
 from core.auth import get_current_user
-from database.connection_manager import get_database
+# Phase 1 deprecated - MongoDB connection manager archived
+# from database.connection_manager import get_database
 from services.advanced_automation_service import (
     AdvancedAutomationService,
     get_advanced_automation_service,
@@ -67,35 +74,42 @@ def get_redis_client():
         return None
 
 
-def get_celery_app():
-    """Get Celery app"""
-    try:
-        from celery import Celery
-        celery_app = Celery('omnify')
-        celery_app.config_from_object('celeryconfig')
-        return celery_app
-    except Exception:
-        return None
+# Phase 3 deprecated - Celery archived (MVP uses Vercel Cron)
+# def get_celery_app():
+#     """Get Celery app"""
+#     try:
+#         from celery import Celery
+#         celery_app = Celery('omnify')
+#         celery_app.config_from_object('celeryconfig')
+#         return celery_app
+#     except Exception:
+#         return None
 
 
 @router.post("", summary="Create Workflow")
 async def create_workflow(
     request: WorkflowCreateRequest,
     current_user: Dict[str, Any] = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    # db: AsyncIOMotorDatabase = Depends(get_database)  # Phase 1 deprecated - MongoDB archived
 ):
-    """Create a new automation workflow"""
-    try:
-        redis_client = get_redis_client()
-        celery_app = get_celery_app()
-        
-        if not redis_client or not celery_app:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Workflow service requires Redis and Celery"
-            )
-        
-        automation_service = get_advanced_automation_service(db, redis_client, celery_app)
+    """Create a new automation workflow (Phase 2 - requires Celery/MongoDB)"""
+    # Phase 3 deprecated - Celery and MongoDB archived for MVP
+    # Workflow automation is Phase 2 feature, not in MVP scope
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Workflow automation is Phase 2 feature. MVP uses Vercel Cron for scheduled tasks."
+    )
+    # try:
+    #     redis_client = get_redis_client()
+    #     celery_app = get_celery_app()  # Phase 3 deprecated
+    #     
+    #     if not redis_client or not celery_app:
+    #         raise HTTPException(
+    #             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+    #             detail="Workflow service requires Redis and Celery"
+    #         )
+    #     
+    #     automation_service = get_advanced_automation_service(db, redis_client, celery_app)  # Phase 1/3 deprecated
         
         workflow_data = {
             'name': request.name,
@@ -129,20 +143,14 @@ async def execute_workflow(
     workflow_id: str,
     request: Optional[WorkflowExecutionRequest] = None,
     current_user: Dict[str, Any] = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    # db: AsyncIOMotorDatabase = Depends(get_database)  # Phase 1 deprecated
 ):
-    """Execute a workflow"""
-    try:
-        redis_client = get_redis_client()
-        celery_app = get_celery_app()
-        
-        if not redis_client or not celery_app:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Workflow service requires Redis and Celery"
-            )
-        
-        automation_service = get_advanced_automation_service(db, redis_client, celery_app)
+    """Execute a workflow (Phase 2 - requires Celery/MongoDB)"""
+    # Phase 3 deprecated - Celery and MongoDB archived for MVP
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Workflow automation is Phase 2 feature. MVP uses Vercel Cron for scheduled tasks."
+    )
         
         trigger_data = request.trigger_data if request else None
         execution_id = await automation_service.execute_workflow(workflow_id, trigger_data)
@@ -167,35 +175,13 @@ async def get_workflow_executions(
     workflow_id: str,
     limit: int = Query(50, description="Number of executions to retrieve"),
     current_user: Dict[str, Any] = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    # db: AsyncIOMotorDatabase = Depends(get_database)  # Phase 1 deprecated
 ):
-    """Get workflow execution history"""
-    try:
-        redis_client = get_redis_client()
-        celery_app = get_celery_app()
-        
-        if not redis_client or not celery_app:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Workflow service requires Redis and Celery"
-            )
-        
-        automation_service = get_advanced_automation_service(db, redis_client, celery_app)
-        executions = await automation_service.get_workflow_executions(workflow_id, limit)
-        
-        return {
-            "success": True,
-            "executions": executions,
-            "count": len(executions)
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting workflow executions: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve executions: {str(e)}"
-        )
+    """Get workflow execution history (Phase 2 - requires Celery/MongoDB)"""
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Workflow automation is Phase 2 feature. MVP uses Vercel Cron for scheduled tasks."
+    )
 
 
 @router.get("/{workflow_id}/executions/{execution_id}", summary="Get Execution Details")
@@ -203,78 +189,26 @@ async def get_execution_details(
     workflow_id: str,
     execution_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    # db: AsyncIOMotorDatabase = Depends(get_database)  # Phase 1 deprecated
 ):
-    """Get detailed execution information"""
-    try:
-        redis_client = get_redis_client()
-        celery_app = get_celery_app()
-        
-        if not redis_client or not celery_app:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Workflow service requires Redis and Celery"
-            )
-        
-        automation_service = get_advanced_automation_service(db, redis_client, celery_app)
-        execution = await automation_service.get_execution_details(execution_id)
-        
-        return {
-            "success": True,
-            "execution": execution
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting execution details: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve execution details: {str(e)}"
-        )
+    """Get detailed execution information (Phase 2 - requires Celery/MongoDB)"""
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Workflow automation is Phase 2 feature. MVP uses Vercel Cron for scheduled tasks."
+    )
 
 
 @router.post("/triggers", summary="Create Trigger")
 async def create_trigger(
     request: TriggerCreateRequest,
     current_user: Dict[str, Any] = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    # db: AsyncIOMotorDatabase = Depends(get_database)  # Phase 1 deprecated
 ):
-    """Create a workflow trigger"""
-    try:
-        redis_client = get_redis_client()
-        celery_app = get_celery_app()
-        
-        if not redis_client or not celery_app:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Workflow service requires Redis and Celery"
-            )
-        
-        automation_service = get_advanced_automation_service(db, redis_client, celery_app)
-        
-        trigger_data = {
-            'workflow_id': request.workflow_id,
-            'trigger_type': request.trigger_type,
-            'trigger_config': request.trigger_config,
-            'organization_id': request.organization_id,
-            'created_by': current_user.get('user_id')
-        }
-        
-        trigger_id = await automation_service.create_trigger(trigger_data)
-        
-        return {
-            "success": True,
-            "trigger_id": trigger_id,
-            "message": "Trigger created successfully"
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error creating trigger: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create trigger: {str(e)}"
-        )
+    """Create a workflow trigger (Phase 2 - requires Celery/MongoDB)"""
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Workflow automation is Phase 2 feature. MVP uses Vercel Cron for scheduled tasks."
+    )
 
 
 @router.get("", summary="List Workflows")
@@ -282,57 +216,26 @@ async def list_workflows(
     organization_id: str = Query(..., description="Organization ID"),
     status_filter: Optional[str] = Query(None, description="Filter by status"),
     current_user: Dict[str, Any] = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    # db: AsyncIOMotorDatabase = Depends(get_database)  # Phase 1 deprecated
 ):
-    """List all workflows for an organization"""
-    try:
-        query = {'organization_id': organization_id}
-        if status_filter:
-            query['status'] = status_filter
-        
-        workflows = await db.workflows.find(query).sort('created_at', -1).limit(100).to_list(length=100)
-        
-        return {
-            "success": True,
-            "workflows": workflows,
-            "count": len(workflows)
-        }
-    except Exception as e:
-        logger.error(f"Error listing workflows: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to list workflows: {str(e)}"
-        )
+    """List all workflows for an organization (Phase 2 - requires MongoDB)"""
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Workflow automation is Phase 2 feature. MVP uses Vercel Cron for scheduled tasks."
+    )
 
 
 @router.get("/{workflow_id}", summary="Get Workflow")
 async def get_workflow(
     workflow_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    # db: AsyncIOMotorDatabase = Depends(get_database)  # Phase 1 deprecated
 ):
-    """Get workflow details"""
-    try:
-        workflow = await db.workflows.find_one({'workflow_id': workflow_id})
-        
-        if not workflow:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Workflow not found"
-            )
-        
-        return {
-            "success": True,
-            "workflow": workflow
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting workflow: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve workflow: {str(e)}"
-        )
+    """Get workflow details (Phase 2 - requires MongoDB)"""
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Workflow automation is Phase 2 feature. MVP uses Vercel Cron for scheduled tasks."
+    )
 
 
 @router.put("/{workflow_id}", summary="Update Workflow")
@@ -340,77 +243,24 @@ async def update_workflow(
     workflow_id: str,
     request: WorkflowUpdateRequest,
     current_user: Dict[str, Any] = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    # db: AsyncIOMotorDatabase = Depends(get_database)  # Phase 1 deprecated
 ):
-    """Update workflow configuration"""
-    try:
-        updates = {}
-        if request.name:
-            updates['name'] = request.name
-        if request.description:
-            updates['description'] = request.description
-        if request.steps:
-            updates['steps'] = request.steps
-        if request.status:
-            updates['status'] = request.status
-        
-        updates['updated_at'] = datetime.utcnow().isoformat()
-        updates['updated_by'] = current_user.get('user_id')
-        
-        result = await db.workflows.update_one(
-            {'workflow_id': workflow_id},
-            {'$set': updates}
-        )
-        
-        if result.matched_count == 0:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Workflow not found"
-            )
-        
-        return {
-            "success": True,
-            "message": "Workflow updated successfully"
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error updating workflow: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update workflow: {str(e)}"
-        )
+    """Update workflow configuration (Phase 2 - requires MongoDB)"""
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Workflow automation is Phase 2 feature. MVP uses Vercel Cron for scheduled tasks."
+    )
 
 
 @router.delete("/{workflow_id}", summary="Delete Workflow")
 async def delete_workflow(
     workflow_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    # db: AsyncIOMotorDatabase = Depends(get_database)  # Phase 1 deprecated
 ):
-    """Delete a workflow"""
-    try:
-        result = await db.workflows.update_one(
-            {'workflow_id': workflow_id},
-            {'$set': {'status': WorkflowStatus.CANCELLED.value, 'deleted_at': datetime.utcnow().isoformat()}}
-        )
-        
-        if result.matched_count == 0:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Workflow not found"
-            )
-        
-        return {
-            "success": True,
-            "message": "Workflow deleted successfully"
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error deleting workflow: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete workflow: {str(e)}"
-        )
+    """Delete a workflow (Phase 2 - requires MongoDB)"""
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Workflow automation is Phase 2 feature. MVP uses Vercel Cron for scheduled tasks."
+    )
 
