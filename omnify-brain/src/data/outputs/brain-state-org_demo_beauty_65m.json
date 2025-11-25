@@ -1,0 +1,178 @@
+{
+  "timestamp": "2025-11-24T21:49:33.008Z",
+  "organizationId": "org_demo_beauty_65m",
+  "memory": {
+    "timestamp": "2025-11-24T21:49:32.961Z",
+    "totals": {
+      "totalSpend": 241582.41,
+      "totalRevenue": 746698.34,
+      "ltvAdjustedRevenue": 746698.34,
+      "blendedRoas": 3.09,
+      "ltvRoas": 3.09,
+      "mer": 3.09
+    },
+    "channels": [
+      {
+        "id": "ch_meta",
+        "name": "Meta Ads",
+        "platform": "Meta",
+        "spend": 123701.76,
+        "revenue": 457607.76,
+        "roas": 3.7,
+        "status": "winner",
+        "contribution": 61.3,
+        "trend": "stable"
+      },
+      {
+        "id": "ch_google",
+        "name": "Google Ads",
+        "platform": "Google",
+        "spend": 62072.78,
+        "revenue": 144769.56,
+        "roas": 2.33,
+        "status": "loser",
+        "contribution": 19.4,
+        "trend": "stable"
+      },
+      {
+        "id": "ch_tiktok",
+        "name": "TikTok Ads",
+        "platform": "TikTok",
+        "spend": 55807.87,
+        "revenue": 144321.02,
+        "roas": 2.59,
+        "status": "loser",
+        "contribution": 19.3,
+        "trend": "down"
+      }
+    ],
+    "ltvFactor": 1,
+    "baselineCohortMonth": "2024-11",
+    "recentCohortMonth": "2024-11"
+  },
+  "oracle": {
+    "timestamp": "2025-11-24T21:49:33.007Z",
+    "globalRiskLevel": "green",
+    "globalRiskScore": 25,
+    "creativeFatigue": [
+      {
+        "creativeId": "cr_c12",
+        "creativeName": "Creative C12 - UGC Testimonial",
+        "channelId": "ch_meta",
+        "fatigueProbability7d": 0.58,
+        "fatigueProbability14d": 0.76,
+        "predictedPerformanceDrop": 0.5,
+        "recentCvr": 0.055,
+        "baselineCvr": 0.0745,
+        "recentCpa": 35.09,
+        "baselineCpa": 25.52,
+        "frequency": 3.63,
+        "recommendedAction": "Monitor Creative C12 - UGC Testimonial closely. Consider A/B testing new variants."
+      },
+      {
+        "creativeId": "cr_t01",
+        "creativeName": "TikTok - Trend Dance #1",
+        "channelId": "ch_tiktok",
+        "fatigueProbability7d": 0.1,
+        "fatigueProbability14d": 0.13,
+        "predictedPerformanceDrop": 0.35,
+        "recentCvr": 0.0454,
+        "baselineCvr": 0.0549,
+        "recentCpa": 23.1,
+        "baselineCpa": 18.71,
+        "frequency": 3.65,
+        "recommendedAction": "Monitor TikTok - Trend Dance #1 closely. Consider A/B testing new variants."
+      }
+    ],
+    "roiDecay": [
+      {
+        "channelId": "ch_tiktok",
+        "channelName": "TikTok Ads",
+        "recentRoas": 2.08,
+        "baselineRoas": 2.68,
+        "decayPercentage": 22.4,
+        "decaySeverity": "medium",
+        "recommendedAction": "Review TikTok Ads targeting and creatives. Consider 10% budget shift."
+      }
+    ],
+    "ltvDrift": null,
+    "risks": [
+      {
+        "id": "risk_fatigue_cr_c12",
+        "type": "creative_fatigue",
+        "severity": "low",
+        "message": "Creative C12 - UGC Testimonial showing fatigue. CVR dropped 26%.",
+        "entityId": "cr_c12",
+        "predictionDays": 7
+      },
+      {
+        "id": "risk_fatigue_cr_t01",
+        "type": "creative_fatigue",
+        "severity": "low",
+        "message": "TikTok - Trend Dance #1 showing fatigue. CVR dropped 17%.",
+        "entityId": "cr_t01",
+        "predictionDays": 7
+      },
+      {
+        "id": "risk_decay_ch_tiktok",
+        "type": "roi_decay",
+        "severity": "medium",
+        "message": "TikTok Ads ROAS dropped 22.4% from baseline.",
+        "entityId": "ch_tiktok"
+      }
+    ]
+  },
+  "curiosity": {
+    "timestamp": "2025-11-24T21:49:33.008Z",
+    "topActions": [
+      {
+        "id": "act_shift_ch_tiktok_to_ch_meta",
+        "type": "shift_budget",
+        "title": "Shift Budget: TikTok Ads → Meta Ads",
+        "description": "Move $5.6K from TikTok Ads (ROAS 2.59x) to Meta Ads (ROAS 3.7x).",
+        "estimatedImpactUsd": 6194.673570000002,
+        "impactFormatted": "+$6.2K/mo",
+        "confidence": "high",
+        "confidenceScore": 85,
+        "urgency": "high",
+        "urgencyScore": 90,
+        "score": 77.78,
+        "entities": [
+          "ch_tiktok",
+          "ch_meta"
+        ],
+        "rationale": "TikTok Ads is underperforming (2.59x vs blended 3.09x). Meta Ads has capacity for additional spend.",
+        "microcopy": {
+          "sarah": "Here's exactly where to move budget: Shift $5.6K from TikTok Ads to Meta Ads for +$6.2K/mo impact.",
+          "jason": "TikTok Ads ROAS (2.59x) is 16% below blended. Shift 10% to Meta Ads (3.7x).",
+          "emily": "Move $5.6K from TikTok Ads → Meta Ads. Execute in platform now."
+        }
+      },
+      {
+        "id": "act_shift_ch_google_to_ch_meta",
+        "type": "shift_budget",
+        "title": "Shift Budget: Google Ads → Meta Ads",
+        "description": "Move $6.2K from Google Ads (ROAS 2.33x) to Meta Ads (ROAS 3.7x).",
+        "estimatedImpactUsd": 8503.970860000001,
+        "impactFormatted": "+$8.5K/mo",
+        "confidence": "high",
+        "confidenceScore": 85,
+        "urgency": "medium",
+        "urgencyScore": 60,
+        "score": 75.02,
+        "entities": [
+          "ch_google",
+          "ch_meta"
+        ],
+        "rationale": "Google Ads is underperforming (2.33x vs blended 3.09x). Meta Ads has capacity for additional spend.",
+        "microcopy": {
+          "sarah": "Here's exactly where to move budget: Shift $6.2K from Google Ads to Meta Ads for +$8.5K/mo impact.",
+          "jason": "Google Ads ROAS (2.33x) is 25% below blended. Shift 10% to Meta Ads (3.7x).",
+          "emily": "Move $6.2K from Google Ads → Meta Ads. Execute in platform now."
+        }
+      }
+    ],
+    "totalOpportunityUsd": 14698.64,
+    "totalOpportunityFormatted": "$14.7K/mo"
+  }
+}

@@ -1,0 +1,80 @@
+[
+  {
+    "id": "cr_c12",
+    "name": "Creative C12 - UGC Testimonial",
+    "channelId": "ch_meta",
+    "spend": 15000,
+    "revenue": 28500,
+    "impressions": 450000,
+    "clicks": 8100,
+    "ctr": 0.018,
+    "roas": 1.9,
+    "status": "active",
+    "launchDate": "2024-10-15"
+  },
+  {
+    "id": "cr_c13",
+    "name": "Creative C13 - Product Demo",
+    "channelId": "ch_meta",
+    "spend": 12000,
+    "revenue": 45600,
+    "impressions": 380000,
+    "clicks": 7220,
+    "ctr": 0.019,
+    "roas": 3.8,
+    "status": "active",
+    "launchDate": "2024-11-01"
+  },
+  {
+    "id": "cr_c14",
+    "name": "Creative C14 - Before/After",
+    "channelId": "ch_meta",
+    "spend": 8000,
+    "revenue": 30400,
+    "impressions": 250000,
+    "clicks": 4750,
+    "ctr": 0.019,
+    "roas": 3.8,
+    "status": "active",
+    "launchDate": "2024-11-15"
+  },
+  {
+    "id": "cr_g01",
+    "name": "Google - RSA - Brand Terms",
+    "channelId": "ch_google",
+    "spend": 6000,
+    "revenue": 15000,
+    "impressions": 120000,
+    "clicks": 3840,
+    "ctr": 0.032,
+    "roas": 2.5,
+    "status": "active",
+    "launchDate": "2024-09-01"
+  },
+  {
+    "id": "cr_t01",
+    "name": "TikTok - Trend Dance #1",
+    "channelId": "ch_tiktok",
+    "spend": 9000,
+    "revenue": 16200,
+    "impressions": 800000,
+    "clicks": 9600,
+    "ctr": 0.012,
+    "roas": 1.8,
+    "status": "active",
+    "launchDate": "2024-10-01"
+  },
+  {
+    "id": "cr_t02",
+    "name": "TikTok - GRWM Routine",
+    "channelId": "ch_tiktok",
+    "spend": 7500,
+    "revenue": 15750,
+    "impressions": 650000,
+    "clicks": 7800,
+    "ctr": 0.012,
+    "roas": 2.1,
+    "status": "active",
+    "launchDate": "2024-10-20"
+  }
+]

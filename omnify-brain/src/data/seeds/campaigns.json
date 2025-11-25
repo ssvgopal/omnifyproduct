@@ -1,0 +1,47 @@
+[
+  {
+    "id": "camp_meta_prospecting",
+    "channelId": "ch_meta",
+    "campaignId": "meta_23851234567890",
+    "campaignName": "Meta - Prospecting - LAL",
+    "campaignType": "prospecting",
+    "status": "active",
+    "dailyBudget": 2500
+  },
+  {
+    "id": "camp_meta_retargeting",
+    "channelId": "ch_meta",
+    "campaignId": "meta_23851234567891",
+    "campaignName": "Meta - Retargeting - Website Visitors",
+    "campaignType": "retargeting",
+    "status": "active",
+    "dailyBudget": 1500
+  },
+  {
+    "id": "camp_google_search",
+    "channelId": "ch_google",
+    "campaignId": "google_12345678901",
+    "campaignName": "Google - Search - Brand",
+    "campaignType": "brand",
+    "status": "active",
+    "dailyBudget": 800
+  },
+  {
+    "id": "camp_google_pmax",
+    "channelId": "ch_google",
+    "campaignId": "google_12345678902",
+    "campaignName": "Google - PMax - All Products",
+    "campaignType": "conversion",
+    "status": "active",
+    "dailyBudget": 1200
+  },
+  {
+    "id": "camp_tiktok_spark",
+    "channelId": "ch_tiktok",
+    "campaignId": "tiktok_7891234567890",
+    "campaignName": "TikTok - Spark Ads - UGC",
+    "campaignType": "prospecting",
+    "status": "active",
+    "dailyBudget": 1800
+  }
+]
