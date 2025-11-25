@@ -25,7 +25,10 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError('Invalid email or password');
+        // NextAuth will pass through the error message thrown in the
+        // Credentials provider's authorize() function. If none is provided,
+        // fall back to a generic error.
+        setError(result.error || 'Invalid email or password');
       } else {
         router.push('/dashboard');
       }

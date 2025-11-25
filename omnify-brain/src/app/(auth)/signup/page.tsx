@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/db/supabase';
+import { supabaseBrowser } from '@/lib/supabase-browser';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -37,7 +37,7 @@ export default function SignupPage() {
 
     try {
       // Step 1: Create user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      const { data: authData, error: authError } = await supabaseBrowser.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {

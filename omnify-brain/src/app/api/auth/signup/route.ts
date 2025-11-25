@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/db/supabase';
 
+// Ensure this route runs in the Node.js runtime so that secure environment
+// variables like SUPABASE_SERVICE_ROLE_KEY are available via process.env.
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   try {
     const { email, name, companyName, authId } = await request.json();
@@ -30,13 +34,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 2: Create user linked to organization
+    // Note: The current Supabase `users` table does not have an `auth_id` column
+    // applied yet (see migration `003_add_auth_id.sql`), so we insert without it
+    // to avoid schema cache errors (PGRST204). Authentication currently links
+    // by email in `[...nextauth]/route.ts`, so this is safe for now.
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
       .insert({
         email,
         organization_id: organization.id,
         role: 'admin', // First user is admin
-        auth_id: authId, // Link to Supabase Auth user
       })
       .select()
       .single();

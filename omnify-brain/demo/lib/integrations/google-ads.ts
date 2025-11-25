@@ -45,7 +45,7 @@ export class GoogleAdsClient {
             });
 
             this.accessToken = response.data.access_token;
-            return this.accessToken;
+            return this.accessToken || '';
         } catch (error: any) {
             console.error('[GOOGLE_ADS] Error getting access token:', error.response?.data || error.message);
             throw new Error('Failed to authenticate with Google Ads API');

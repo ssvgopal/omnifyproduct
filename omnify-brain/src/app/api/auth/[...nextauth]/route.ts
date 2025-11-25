@@ -29,7 +29,12 @@ export const authOptions: NextAuthOptions = {
 
           if (authError || !authData.user) {
             console.error('[AUTH] Authentication failed:', authError);
-            return null;
+            // Surface a clearer error message to the client for common cases
+            const code = (authError as any)?.code;
+            if (code === 'email_not_confirmed') {
+              throw new Error('Email not confirmed. Please check your inbox for the confirmation link.');
+            }
+            throw new Error('Invalid email or password.');
           }
 
           // Fetch user from our users table

@@ -1,8 +1,8 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -23,6 +23,7 @@ import {
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -71,31 +72,65 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header - Corporate Style */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-3xl font-semibold text-slate-900 mb-1">
-                Marketing Dashboard
-              </h1>
-              <p className="text-slate-600 text-sm">
-                Welcome back, <span className="font-medium text-slate-900">{session.user?.email}</span>
-              </p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Header - Corporate Style with user menu */}
+        <header className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold text-slate-900 mb-1">
+              Marketing Dashboard
+            </h1>
+            <p className="text-slate-600 text-sm">
+              Welcome back, <span className="font-medium text-slate-900">{session.user?.email}</span>
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="px-3 py-1.5 bg-slate-100 rounded-md">
+              <span className="text-xs font-medium text-slate-700 uppercase tracking-wide">
+                {(session.user as any)?.role || 'user'}
+              </span>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="px-3 py-1.5 bg-slate-100 rounded-md">
-                <span className="text-xs font-medium text-slate-700 uppercase tracking-wide">
-                  {(session.user as any)?.role || 'user'}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 rounded-md">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                <span className="text-xs font-medium text-emerald-700">Active</span>
-              </div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 rounded-md">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+              <span className="text-xs font-medium text-emerald-700">Active</span>
+            </div>
+            {/* User menu: gear button with dropdown (Settings, Log out) */}
+            <div className="relative">
+              <button
+                type="button"
+                aria-label="User menu"
+                className="inline-flex items-center justify-center h-9 w-9 rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50"
+                onClick={() => setIsUserMenuOpen((open) => !open)}
+              >
+                <Settings className="h-4 w-4" />
+              </button>
+              {isUserMenuOpen && (
+                <div className="absolute right-0 mt-2 w-40 rounded-md border border-slate-200 bg-white shadow-lg py-1 text-sm z-20">
+                  <button
+                    type="button"
+                    className="flex w-full items-center px-3 py-2 text-slate-700 hover:bg-slate-50"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      router.push('/settings/integrations');
+                    }}
+                  >
+                    Settings
+                  </button>
+                  <div className="my-1 h-px bg-slate-100" />
+                  <button
+                    type="button"
+                    className="flex w-full items-center px-3 py-2 text-slate-700 hover:bg-slate-50"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      signOut({ callbackUrl: '/login' });
+                    }}
+                  >
+                    Log out
+                  </button>
+                </div>
+              )}
             </div>
           </div>
-        </div>
+        </header>
 
         {/* Key Metrics - Professional Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
