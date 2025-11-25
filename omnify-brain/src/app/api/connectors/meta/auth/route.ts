@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       return validation.error!;
     }
 
-    const user = await getCurrentUser();
+    const user = await getCurrentUser(request);
     
     if (!user) {
       return NextResponse.json(

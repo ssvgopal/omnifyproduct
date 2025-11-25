@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       return validation.error!;
     }
 
-    const user = await getCurrentUser();
+    const user = await getCurrentUser(request);
     const searchParams = request.nextUrl.searchParams;
     const shop = searchParams.get('shop'); // Shopify store domain
 

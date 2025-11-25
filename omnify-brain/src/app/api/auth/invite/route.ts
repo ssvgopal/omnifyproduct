@@ -4,7 +4,7 @@ import { inviteUserToOrganization } from '@/lib/organization';
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAdmin();
+    const user = await requireAdmin(request);
     const { email, role = 'member' } = await request.json();
 
     if (!email) {

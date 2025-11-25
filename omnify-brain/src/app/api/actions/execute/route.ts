@@ -5,7 +5,7 @@ import { validatePlatform } from '@/lib/validation';
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireRole('member'); // Member or admin can execute actions
+    const user = await requireRole('member', request); // Member or admin can execute actions
     const { actionType, targetId, targetType, amount, fromChannelId, toChannelId } = await request.json();
 
     if (!actionType || !targetId) {

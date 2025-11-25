@@ -1,5 +1,5 @@
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { NextRequest } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/db/supabase';
 
 export interface SessionUser {
@@ -11,29 +11,66 @@ export interface SessionUser {
 }
 
 /**
- * Get the current user session
+ * Get the current user from Supabase Auth token
+ * Supports Authorization header: Bearer <token>
  */
-export async function getCurrentUser(): Promise<SessionUser | null> {
-  const session = await getServerSession(authOptions);
-  
-  if (!session?.user) {
+export async function getCurrentUser(request?: NextRequest): Promise<SessionUser | null> {
+  let accessToken: string | null = null;
+
+  // Get token from Authorization header
+  if (request) {
+    const authHeader = request.headers.get('authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      accessToken = authHeader.substring(7);
+    }
+  }
+
+  if (!accessToken) {
+    return null;
+  }
+
+  // Verify token with Supabase
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(accessToken);
+
+  if (authError || !authUser) {
+    console.error('[AUTH] Token verification failed:', authError);
+    return null;
+  }
+
+  // Get user from our users table using auth_id
+  const { data: dbUser, error: dbError } = await supabaseAdmin
+    .from('users')
+    .select('*, organization:organizations(*)')
+    .eq('auth_id', authUser.id)
+    .single();
+
+  if (dbError || !dbUser) {
+    console.error('[AUTH] User not found in database:', dbError);
     return null;
   }
 
   return {
-    id: (session.user as any).id,
-    email: session.user.email!,
-    name: session.user.name || undefined,
-    organizationId: (session.user as any).organizationId,
-    role: (session.user as any).role || 'member',
+    id: dbUser.id,
+    email: dbUser.email,
+    name: dbUser.email.split('@')[0], // Fallback to email prefix
+    organizationId: dbUser.organization_id,
+    role: (dbUser.role as 'admin' | 'member' | 'viewer') || 'member',
   };
 }
 
 /**
  * Check if user has required role
  */
-export async function requireRole(requiredRole: 'admin' | 'member' | 'viewer'): Promise<SessionUser> {
-  const user = await getCurrentUser();
+export async function requireRole(
+  requiredRole: 'admin' | 'member' | 'viewer',
+  request?: NextRequest
+): Promise<SessionUser> {
+  const user = await getCurrentUser(request);
   
   if (!user) {
     throw new Error('Unauthorized');
@@ -53,8 +90,8 @@ export async function requireRole(requiredRole: 'admin' | 'member' | 'viewer'): 
 /**
  * Check if user is admin
  */
-export async function requireAdmin(): Promise<SessionUser> {
-  return requireRole('admin');
+export async function requireAdmin(request?: NextRequest): Promise<SessionUser> {
+  return requireRole('admin', request);
 }
 
 /**

@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     return validation.error!;
   }
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUser(request);
     
     if (!user) {
       return NextResponse.json(
