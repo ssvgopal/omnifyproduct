@@ -58,8 +58,17 @@ WHERE platform IN (
 -- ============================================
 -- 3. Remove deprecated platform channels
 -- ============================================
+-- First, delete all channels that are NOT MVP platforms
+-- This ensures we catch any platform values we didn't explicitly list
 DELETE FROM channels 
-WHERE platform IN (
+WHERE platform NOT IN (
+  'meta_ads', 'google_ads', 'tiktok_ads', 'shopify',  -- Technical names
+  'Meta', 'Google', 'TikTok', 'Shopify'              -- Display names
+);
+
+-- Also explicitly delete known deprecated platforms (in case of case sensitivity issues)
+DELETE FROM channels 
+WHERE LOWER(platform) IN (
   'agentkit', 
   'gohighlevel', 
   'triplewhale', 
@@ -70,20 +79,13 @@ WHERE platform IN (
   'youtube',
   'linkedin_ads',
   'youtube_ads',
-  'LinkedIn',
-  'YouTube',
-  'AgentKit',
-  'GoHighLevel',
-  'TripleWhale',
-  'HubSpot',
-  'Klaviyo',
-  'Stripe',
-  'Email'  -- Email is not an ad platform, remove if not needed
+  'email'
 );
 
 -- ============================================
 -- 4. Add constraints to prevent future deprecated platforms
 -- ============================================
+-- IMPORTANT: Constraints are added AFTER data cleanup to avoid violations
 
 -- api_credentials platform constraint
 ALTER TABLE api_credentials
@@ -101,7 +103,18 @@ ALTER TABLE sync_jobs
 ADD CONSTRAINT valid_mvp_platform 
 CHECK (platform IN ('meta_ads', 'google_ads', 'tiktok_ads', 'shopify'));
 
--- channels platform constraint
+-- channels platform constraint (only add if no violations)
+-- First verify all rows are valid
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM channels 
+    WHERE platform NOT IN ('meta_ads', 'google_ads', 'tiktok_ads', 'shopify', 'Meta', 'Google', 'TikTok', 'Shopify')
+  ) THEN
+    RAISE EXCEPTION 'Cannot add constraint: channels table contains invalid platform values. Please clean data first.';
+  END IF;
+END $$;
+
 ALTER TABLE channels
 DROP CONSTRAINT IF EXISTS valid_mvp_platform;
 
@@ -177,22 +190,34 @@ BEGIN
 END $$;
 
 -- ============================================
--- 8. Summary
+-- 8. Summary and Validation
 -- ============================================
 DO $$
 DECLARE
   credentials_count INT;
   sync_jobs_count INT;
   channels_count INT;
+  invalid_channels INT;
 BEGIN
   SELECT COUNT(*) INTO credentials_count FROM api_credentials;
   SELECT COUNT(*) INTO sync_jobs_count FROM sync_jobs;
   SELECT COUNT(*) INTO channels_count FROM channels;
+  SELECT COUNT(*) INTO invalid_channels FROM channels 
+    WHERE platform NOT IN ('meta_ads', 'google_ads', 'tiktok_ads', 'shopify', 'Meta', 'Google', 'TikTok', 'Shopify');
   
   RAISE NOTICE 'Migration 006 Complete:';
   RAISE NOTICE '  - api_credentials: % rows remaining', credentials_count;
   RAISE NOTICE '  - sync_jobs: % rows remaining', sync_jobs_count;
   RAISE NOTICE '  - channels: % rows remaining', channels_count;
+  
+  IF invalid_channels > 0 THEN
+    RAISE WARNING '  - WARNING: % channels with invalid platform values found', invalid_channels;
+    RAISE WARNING '    Run this query to see invalid values:';
+    RAISE WARNING '    SELECT DISTINCT platform FROM channels WHERE platform NOT IN (''meta_ads'', ''google_ads'', ''tiktok_ads'', ''shopify'', ''Meta'', ''Google'', ''TikTok'', ''Shopify'');';
+  ELSE
+    RAISE NOTICE '  - All channels have valid MVP platform values';
+  END IF;
+  
   RAISE NOTICE '  - Constraints added to prevent deprecated platforms';
 END $$;
 
