@@ -30,7 +30,7 @@ The migration script has been updated to:
 **Key Change:**
 ```sql
 -- OLD (only deleted specific deprecated platforms):
-DELETE FROM channels WHERE platform IN ('agentkit', 'gohighlevel', ...);
+-- DELETE FROM channels WHERE platform IN ('agentkit', 'gohighlevel', ...);
 
 -- NEW (deletes ALL non-MVP platforms):
 DELETE FROM channels 
@@ -39,6 +39,23 @@ WHERE platform NOT IN (
   'Meta', 'Google', 'TikTok', 'Shopify'              -- Display names
 );
 ```
+
+**⚠️ IMPORTANT**: The `...` in the example above is just a placeholder. Do NOT copy that line with `...` - it will cause a syntax error. Use the actual migration file or the standalone script below.
+
+---
+
+### **Option 1b: Use Standalone Script (Simplest)**
+
+If you want a simple, standalone script without all the extra logic:
+
+**File**: `omnify-brain/supabase/migrations/006_cleanup_channels_standalone.sql`
+
+This script:
+1. Deletes all non-MVP channels
+2. Adds the constraint
+3. Includes a verification query
+
+**Just copy and paste this script into Supabase SQL Editor.**
 
 ---
 
