@@ -9,17 +9,27 @@
 ### AgentKit Files
 - [ ] `backend/services/agentkit_service.py` → `_archive/backend-deprecated/services/`
 - [ ] `backend/services/real_agentkit_adapter.py` → `_archive/backend-deprecated/services/`
-- [ ] `backend/services/agentkit_sdk_client*.py` (all) → `_archive/backend-deprecated/services/`
+- [ ] `backend/services/agentkit_sdk_client.py` → `_archive/backend-deprecated/services/`
+- [ ] `backend/services/agentkit_sdk_client_new.py` → `_archive/backend-deprecated/services/`
+- [ ] `backend/services/agentkit_sdk_client_old.py` → `_archive/backend-deprecated/services/`
+- [ ] `backend/services/agentkit_sdk_client_simulation.py` → `_archive/backend-deprecated/services/`
 - [ ] `backend/api/agentkit_routes.py` → `_archive/backend-deprecated/api/`
 - [ ] `backend/services/omnify_core_agents.py` → `_archive/backend-deprecated/services/`
 - [ ] `backend/services/agentkit_agents/` (entire dir) → `_archive/backend-deprecated/services/`
+- [ ] `backend/agentkit_server.py` → `_archive/backend-deprecated/` ⚠️ **Special: Contains MongoDB + AgentKit**
+- [ ] `backend/agentkit_server_updated.py` → `_archive/backend-deprecated/` ⚠️ **Special: Contains MongoDB + AgentKit**
+- [ ] `backend/platform_adapters/agentkit_adapter.py` → `_archive/backend-deprecated/platform_adapters/` ⚠️ **NEW**
+- [ ] `backend/platform_adapters/agentkit/adapter.py` → `_archive/backend-deprecated/platform_adapters/` ⚠️ **NEW**
+- [ ] `backend/models/agentkit_models.py` → `_archive/backend-deprecated/models/` ⚠️ **NEW**
 
 ### GoHighLevel Files
 - [ ] `backend/integrations/gohighlevel/` → `_archive/backend-deprecated/integrations/`
 - [ ] `backend/api/gohighlevel_oauth_routes.py` → `_archive/backend-deprecated/api/`
+- [ ] `backend/platform_adapters/gohighlevel_adapter.py` → `_archive/backend-deprecated/platform_adapters/` ⚠️ **NEW**
 
 ### MongoDB Infrastructure
 - [ ] `backend/database/mongodb_schema.py` → `_archive/backend-deprecated/database/`
+- [ ] `backend/database/mongodb_schema.py.backup` → `_archive/backend-deprecated/database/` ⚠️ **NEW**
 - [ ] `backend/database/connection_manager.py` → `_archive/backend-deprecated/database/`
 - [ ] `backend/database/production_mongodb_schema.py` → `_archive/backend-deprecated/database/`
 - [ ] `backend/core/database_security.py` → `_archive/backend-deprecated/core/`
@@ -65,9 +75,9 @@
 ### Other Platforms
 - [ ] `backend/integrations/stripe/` → `_archive/backend-phase2-integrations/`
 - [ ] `backend/api/stripe_oauth_routes.py` → `_archive/backend-phase2-integrations/`
-- [ ] `backend/integrations/linkedin_ads/` → `_archive/backend-phase2-integrations/`
+- [ ] `backend/integrations/linkedin/` → `_archive/backend-phase2-integrations/` ⚠️ **NOTE: linkedin (not linkedin_ads)**
 - [ ] `backend/api/linkedin_ads_oauth_routes.py` → `_archive/backend-phase2-integrations/`
-- [ ] `backend/integrations/youtube_ads/` → `_archive/backend-phase2-integrations/`
+- [ ] `backend/integrations/youtube/` → `_archive/backend-phase2-integrations/` ⚠️ **NOTE: youtube (not youtube_ads)**
 - [ ] `backend/api/youtube_ads_oauth_routes.py` → `_archive/backend-phase2-integrations/`
 
 ### After Moving Files
