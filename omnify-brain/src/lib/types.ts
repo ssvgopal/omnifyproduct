@@ -6,7 +6,7 @@ export interface BrainModule<TInput, TOutput> {
 export interface ChannelData {
   id: string;
   name: string;
-  platform: 'Meta' | 'Google' | 'TikTok' | 'LinkedIn' | 'Email';
+  platform: 'Meta' | 'Google' | 'TikTok' | 'Shopify'; // MVP platforms only
   spend: number;
   revenue: number;
   impressions: number;
