@@ -1,7 +1,8 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
+# Phase 1 deprecated - MongoDB archived (MVP uses Supabase)
+# from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
@@ -65,7 +66,7 @@ async def health_check():
         "status": "healthy",
         "services": {
             "gateway": "operational",
-            "platforms": ["agentkit", "gohighlevel", "custom"],
+            "platforms": ["custom"],  # MVP only - AgentKit/GoHighLevel archived
             "brain_logic": "operational",
             "analytics": "operational"
         }
@@ -73,73 +74,21 @@ async def health_check():
 
 # ========== PLATFORM ADAPTER ENDPOINTS ==========
 
-# AgentKit Endpoints
-@api_router.post("/agentkit/agents")
-async def create_agentkit_agent(agent: AgentCreate):
-    """Create an AgentKit agent"""
-    result = await agentkit_adapter.create_agent(agent.dict())
-    return result
+# Phase 1 deprecated endpoints (AgentKit and GoHighLevel archived)
+# All AgentKit and GoHighLevel endpoints removed - archived in Phase 1
+# MVP focuses on Meta/Google/TikTok/Shopify integrations only
 
-@api_router.post("/agentkit/agents/{agent_id}/execute")
-async def execute_agentkit_agent(agent_id: str, execution: AgentExecution):
-    """Execute an AgentKit agent"""
-    result = await agentkit_adapter.execute_agent(agent_id, execution.input_data)
-    return result
+# @api_router.post("/agentkit/agents")
+# async def create_agentkit_agent(agent: AgentCreate):
+#     """Create an AgentKit agent - Phase 1 deprecated"""
+#     raise HTTPException(status_code=501, detail="AgentKit is Phase 1 deprecated")
+# ... (all AgentKit endpoints commented out)
 
-@api_router.get("/agentkit/agents")
-async def list_agentkit_agents():
-    """List all AgentKit agents"""
-    agents = await agentkit_adapter.list_agents()
-    return {"agents": agents}
-
-@api_router.get("/agentkit/agents/{agent_id}/status")
-async def get_agentkit_agent_status(agent_id: str):
-    """Get AgentKit agent status"""
-    status = await agentkit_adapter.get_agent_status(agent_id)
-    return status
-
-@api_router.post("/agentkit/workflows")
-async def create_agentkit_workflow(workflow: WorkflowCreate):
-    """Create an AgentKit workflow"""
-    result = await agentkit_adapter.create_workflow(workflow.dict())
-    return result
-
-# GoHighLevel Endpoints
-@api_router.post("/gohighlevel/clients")
-async def create_ghl_client(client_data: ClientCreate):
-    """Create a GoHighLevel client"""
-    result = await gohighlevel_adapter.create_client(client_data.dict())
-    return result
-
-@api_router.get("/gohighlevel/clients")
-async def list_ghl_clients():
-    """List all GoHighLevel clients"""
-    clients = await gohighlevel_adapter.list_clients()
-    return {"clients": clients}
-
-@api_router.post("/gohighlevel/campaigns")
-async def create_ghl_campaign(campaign: CampaignCreate):
-    """Create a GoHighLevel campaign"""
-    result = await gohighlevel_adapter.create_campaign(campaign.dict())
-    return result
-
-@api_router.get("/gohighlevel/campaigns/{campaign_id}/status")
-async def get_ghl_campaign_status(campaign_id: str):
-    """Get GoHighLevel campaign status"""
-    status = await gohighlevel_adapter.get_campaign_status(campaign_id)
-    return status
-
-@api_router.post("/gohighlevel/workflows")
-async def create_ghl_workflow(workflow: WorkflowCreate):
-    """Create a GoHighLevel automation workflow"""
-    result = await gohighlevel_adapter.create_automation_workflow(workflow.dict())
-    return result
-
-@api_router.post("/gohighlevel/workflows/{workflow_id}/execute")
-async def execute_ghl_workflow(workflow_id: str, execution: WorkflowExecution):
-    """Execute a GoHighLevel workflow"""
-    result = await gohighlevel_adapter.execute_workflow(workflow_id, execution.data)
-    return result
+# @api_router.post("/gohighlevel/clients")
+# async def create_ghl_client(client_data: ClientCreate):
+#     """Create a GoHighLevel client - Phase 1 deprecated"""
+#     raise HTTPException(status_code=501, detail="GoHighLevel is Phase 1 deprecated")
+# ... (all GoHighLevel endpoints commented out)
 
 # Custom Platform Endpoints
 @api_router.post("/custom/microservices")

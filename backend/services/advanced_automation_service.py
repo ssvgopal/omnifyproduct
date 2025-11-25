@@ -933,14 +933,20 @@ class WorkflowTriggerManager:
             
             if cron_expression:
                 # Schedule with Celery Beat
-                self.celery.conf.beat_schedule[f"trigger_{trigger.trigger_id}"] = {
+                # Phase 3 deprecated - Celery archived (MVP uses Vercel Cron)
+                # self.celery.conf.beat_schedule[f"trigger_{trigger.trigger_id}"] = {
+                logger.warning("Celery deprecated - trigger not scheduled (MVP uses Vercel Cron)")
+                # self.celery.conf.beat_schedule[f"trigger_{trigger.trigger_id}"] = {
                     "task": "workflow_engine.execute_scheduled_workflow",
                     "schedule": cron_expression,
                     "args": (trigger.trigger_id,)
                 }
             elif interval:
                 # Schedule with interval
-                self.celery.conf.beat_schedule[f"trigger_{trigger.trigger_id}"] = {
+                # Phase 3 deprecated - Celery archived (MVP uses Vercel Cron)
+                # self.celery.conf.beat_schedule[f"trigger_{trigger.trigger_id}"] = {
+                logger.warning("Celery deprecated - trigger not scheduled (MVP uses Vercel Cron)")
+                # self.celery.conf.beat_schedule[f"trigger_{trigger.trigger_id}"] = {
                     "task": "workflow_engine.execute_scheduled_workflow",
                     "schedule": interval,
                     "args": (trigger.trigger_id,)
@@ -1190,7 +1196,8 @@ class AdvancedAutomationService:
 # Global instance
 advanced_automation_service = None
 
-def get_advanced_automation_service(db: AsyncIOMotorClient, redis_client: redis.Redis, celery_app: Celery) -> AdvancedAutomationService:
+def get_advanced_automation_service(db=None, redis_client: redis.Redis=None, celery_app=None) -> AdvancedAutomationService:
+    # Phase 1/3 deprecated - MongoDB and Celery archived for MVP
     """Get advanced automation service instance"""
     global advanced_automation_service
     if advanced_automation_service is None:

@@ -717,7 +717,9 @@ class AdditionalIntegrationsService:
                 "last_sync": config.last_sync.isoformat() if config.last_sync else None
             }
             
-            await self.db.additional_integrations.insert_one(config_doc)
+            # Phase 1 deprecated - MongoDB archived (MVP uses Supabase)
+            # await self.db.additional_integrations.insert_one(config_doc)
+            logger.warning("MongoDB deprecated - integration config not persisted (MVP uses Supabase)")
             
             logger.info(f"Created integration {integration_id}: {config.name}")
             return integration_id
@@ -730,7 +732,10 @@ class AdditionalIntegrationsService:
         """Test integration connection"""
         try:
             # Get integration config
-            config_doc = await self.db.additional_integrations.find_one({"integration_id": integration_id})
+            # Phase 1 deprecated - MongoDB archived (MVP uses Supabase)
+            # config_doc = await self.db.additional_integrations.find_one({"integration_id": integration_id})
+            logger.warning("MongoDB deprecated - integration config not retrieved (MVP uses Supabase)")
+            config_doc = None
             if not config_doc:
                 raise ValueError(f"Integration {integration_id} not found")
             
@@ -745,7 +750,10 @@ class AdditionalIntegrationsService:
                 
                 # Update status
                 status = IntegrationStatus.ACTIVE if is_authenticated else IntegrationStatus.ERROR
-                await self.db.additional_integrations.update_one(
+                # Phase 1 deprecated - MongoDB archived (MVP uses Supabase)
+                # await self.db.additional_integrations.update_one(
+                logger.warning("MongoDB deprecated - integration config not updated (MVP uses Supabase)")
+                # await self.db.additional_integrations.update_one(
                     {"integration_id": integration_id},
                     {
                         "$set": {
@@ -782,7 +790,10 @@ class AdditionalIntegrationsService:
             started_at = datetime.utcnow()
             
             # Get integration config
-            config_doc = await self.db.additional_integrations.find_one({"integration_id": integration_id})
+            # Phase 1 deprecated - MongoDB archived (MVP uses Supabase)
+            # config_doc = await self.db.additional_integrations.find_one({"integration_id": integration_id})
+            logger.warning("MongoDB deprecated - integration config not retrieved (MVP uses Supabase)")
+            config_doc = None
             if not config_doc:
                 raise ValueError(f"Integration {integration_id} not found")
             
