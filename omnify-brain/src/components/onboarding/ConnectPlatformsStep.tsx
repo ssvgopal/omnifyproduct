@@ -120,3 +120,4 @@ export function ConnectPlatformsStep({ data, onNext, onBack }: ConnectPlatformsS
   );
 }
 
+

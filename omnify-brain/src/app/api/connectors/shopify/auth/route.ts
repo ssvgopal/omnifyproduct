@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
+import { validatePlatform } from '@/lib/validation';
 
 const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY;
 const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET;
@@ -7,6 +8,12 @@ const BASE_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000';
 
 export async function GET(request: NextRequest) {
   try {
+    // Platform validation
+    const validation = validatePlatform('shopify');
+    if (!validation.valid) {
+      return validation.error!;
+    }
+
     const user = await getCurrentUser();
     const searchParams = request.nextUrl.searchParams;
     const shop = searchParams.get('shop'); // Shopify store domain

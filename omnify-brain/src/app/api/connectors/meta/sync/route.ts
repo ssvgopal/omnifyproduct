@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/db/supabase';
+import { validatePlatform } from '@/lib/validation';
 
 export async function POST(request: NextRequest) {
+  // Platform validation
+  const validation = validatePlatform('meta_ads');
+  if (!validation.valid) {
+    return validation.error!;
+  }
   try {
     const user = await getCurrentUser();
     

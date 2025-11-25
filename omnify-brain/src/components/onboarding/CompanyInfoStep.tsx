@@ -105,3 +105,4 @@ export function CompanyInfoStep({ data, onNext }: CompanyInfoStepProps) {
   );
 }
 
+

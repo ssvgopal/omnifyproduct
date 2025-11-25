@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
+import { validatePlatform } from '@/lib/validation';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -7,6 +8,12 @@ const BASE_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000';
 
 export async function GET(request: NextRequest) {
   try {
+    // Platform validation
+    const validation = validatePlatform('google_ads');
+    if (!validation.valid) {
+      return validation.error!;
+    }
+
     const user = await getCurrentUser();
     
     if (!user) {

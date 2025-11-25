@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser, requireRole } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/db/supabase';
+import { validatePlatform } from '@/lib/validation';
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,6 +46,12 @@ export async function POST(request: NextRequest) {
         { error: 'Could not determine platform' },
         { status: 400 }
       );
+    }
+
+    // Platform validation
+    const validation = validatePlatform(platform);
+    if (!validation.valid) {
+      return validation.error!;
     }
 
     // Get credentials
