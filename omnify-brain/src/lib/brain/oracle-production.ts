@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { supabaseAdmin } from '@/lib/db/supabase';
 import { BrainModule, OracleOutput, RiskFactor } from '../types';
 import { OmnifyAI } from '../ai/openai-client';
 
@@ -17,7 +17,7 @@ export class OracleModuleProduction implements BrainModule<{ organizationId: str
         const risks: RiskFactor[] = [];
 
         // 1. Fetch channels
-        const { data: channels } = await supabase
+        const { data: channels } = await supabaseAdmin
             .from('channels')
             .select('*')
             .eq('organization_id', organizationId)
@@ -26,7 +26,7 @@ export class OracleModuleProduction implements BrainModule<{ organizationId: str
         if (!channels) throw new Error('Failed to fetch channels');
 
         // 2. Fetch creatives
-        const { data: creatives } = await supabase
+        const { data: creatives } = await supabaseAdmin
             .from('creatives')
             .select('*')
             .in('channel_id', channels.map(c => c.id))
@@ -69,7 +69,7 @@ export class OracleModuleProduction implements BrainModule<{ organizationId: str
         }
 
         // 4. ROI Decay Detection
-        const { data: recentMetrics } = await supabase
+        const { data: recentMetrics } = await supabaseAdmin
             .from('daily_metrics')
             .select('*')
             .in('channel_id', channels.map(c => c.id))

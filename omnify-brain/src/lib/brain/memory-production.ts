@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { supabaseAdmin } from '@/lib/db/supabase';
 import { BrainModule, MemoryOutput } from '../types';
 
 export class MemoryModuleProduction implements BrainModule<{ organizationId: string }, MemoryOutput> {
@@ -8,7 +8,7 @@ export class MemoryModuleProduction implements BrainModule<{ organizationId: str
         const { organizationId } = input;
 
         // 1. Fetch all channels for the organization
-        const { data: channels, error: channelsError } = await supabase
+        const { data: channels, error: channelsError } = await supabaseAdmin
             .from('channels')
             .select('*')
             .eq('organization_id', organizationId)
@@ -19,7 +19,7 @@ export class MemoryModuleProduction implements BrainModule<{ organizationId: str
         }
 
         // 2. Fetch daily metrics for all channels (last 30 days)
-        const { data: metrics, error: metricsError } = await supabase
+        const { data: metrics, error: metricsError } = await supabaseAdmin
             .from('daily_metrics')
             .select('*')
             .in('channel_id', channels.map(c => c.id))
