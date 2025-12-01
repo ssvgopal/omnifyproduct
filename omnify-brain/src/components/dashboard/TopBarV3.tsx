@@ -39,17 +39,19 @@ export function TopBarV3({ state }: TopBarV3Props) {
 
   return (
     <div className="border-b bg-background">
-      {/* Main metrics bar */}
-      <div className="flex items-center justify-between p-4 border-b">
-        <div className="flex items-center gap-4">
+      {/* Main metrics bar - responsive */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between p-4 border-b gap-4">
+        {/* Logo and title */}
+        <div className="flex items-center justify-between lg:justify-start gap-4">
           <div className="flex items-center gap-2">
             <Brain className="h-6 w-6 text-purple-600" />
-            <h1 className="text-xl font-bold tracking-tight">Omnify Brain</h1>
+            <h1 className="text-lg lg:text-xl font-bold tracking-tight">Omnify Brain</h1>
           </div>
           <Badge variant="outline" className="text-xs">V3 MVP</Badge>
         </div>
 
-        <div className="flex items-center gap-6">
+        {/* Metrics - scrollable on mobile */}
+        <div className="flex items-center gap-4 lg:gap-6 overflow-x-auto pb-2 lg:pb-0 -mx-4 px-4 lg:mx-0 lg:px-0">
           {/* MER */}
           <MetricDisplay
             label="MER"
@@ -73,7 +75,7 @@ export function TopBarV3({ state }: TopBarV3Props) {
           />
 
           {/* Global Risk Level */}
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center shrink-0">
             <span className="text-muted-foreground text-xs mb-1">Risk Level</span>
             <Badge className={`${riskStyle.bg} hover:${riskStyle.bg} text-white px-3`}>
               <AlertCircle className="h-3 w-3 mr-1" />
@@ -81,14 +83,21 @@ export function TopBarV3({ state }: TopBarV3Props) {
             </Badge>
           </div>
 
-          {/* Persona Toggle */}
+          {/* Persona Toggle - hidden on small screens, shown on medium+ */}
+          <div className="hidden md:block shrink-0">
+            <PersonaToggle />
+          </div>
+        </div>
+
+        {/* Persona Toggle - shown only on small screens */}
+        <div className="md:hidden">
           <PersonaToggle />
         </div>
       </div>
 
       {/* Narrative bar - "Here's what changed this week" */}
       <div className="px-4 py-3 bg-muted/30">
-        <div className="flex items-start gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
           <span className="text-sm font-medium text-muted-foreground shrink-0">
             {persona === 'sarah' ? "Here's the truth:" : 
              persona === 'jason' ? "This week:" : 

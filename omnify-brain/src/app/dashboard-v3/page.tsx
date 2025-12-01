@@ -19,6 +19,9 @@ import { TopBarV3 } from '@/components/dashboard/TopBarV3';
 import { MemoryCardV3 } from '@/components/dashboard/MemoryCardV3';
 import { OracleCardV3 } from '@/components/dashboard/OracleCardV3';
 import { CuriosityCardV3 } from '@/components/dashboard/CuriosityCardV3';
+import { LeaderboardV3 } from '@/components/dashboard/LeaderboardV3';
+import { ApplyAllActionsV3 } from '@/components/dashboard/ApplyAllActionsV3';
+import { ChannelHealthV3 } from '@/components/dashboard/ChannelHealthV3';
 import { BrainStateV3 } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 
@@ -254,26 +257,43 @@ export default function DashboardV3Page() {
 
   return (
     <PersonaProvider>
-      <div className="min-h-screen bg-background">
-        {/* Top Bar */}
-        <TopBarV3 state={brainState} />
+      <div className="min-h-screen bg-gray-50">
+        {/* Sticky Top Bar */}
+        <div className="sticky top-0 z-10 bg-white shadow-sm">
+          <TopBarV3 state={brainState} />
+        </div>
 
-        {/* Main Content - Three Column Layout */}
-        <div className="p-6">
+        {/* Main Content - Two Column FACE Wireframe Layout */}
+        <div className="container mx-auto px-4 py-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* MEMORY */}
-            <MemoryCardV3 data={brainState.memory} />
+            {/* Left Column - Main Content (2/3 width) */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Risk Cards (ORACLE) */}
+              <OracleCardV3 data={brainState.oracle} />
 
-            {/* ORACLE */}
-            <OracleCardV3 data={brainState.oracle} />
+              {/* Insights (MEMORY) */}
+              <MemoryCardV3 data={brainState.memory} />
 
-            {/* CURIOSITY */}
-            <CuriosityCardV3 data={brainState.curiosity} />
+              {/* Recommendations (CURIOSITY) */}
+              <CuriosityCardV3 data={brainState.curiosity} />
+
+              {/* Apply All Actions */}
+              <ApplyAllActionsV3 curiosity={brainState.curiosity} />
+            </div>
+
+            {/* Right Column - Sidebar (1/3 width) */}
+            <div className="space-y-6">
+              {/* Leaderboard */}
+              <LeaderboardV3 state={brainState} />
+
+              {/* Channel Health */}
+              <ChannelHealthV3 state={brainState} />
+            </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t text-center text-xs text-muted-foreground">
+        <div className="p-4 border-t bg-white text-center text-xs text-muted-foreground">
           <p>
             Omnify Brain V3 • Last updated: {new Date(brainState.timestamp).toLocaleString()}
             {' • '}

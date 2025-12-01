@@ -15,3 +15,9 @@ export { TopBarV3 } from './TopBarV3';
 export { MemoryCardV3 } from './MemoryCardV3';
 export { OracleCardV3 } from './OracleCardV3';
 export { CuriosityCardV3 } from './CuriosityCardV3';
+
+// FACE Wireframe components
+export { LeaderboardV3 } from './LeaderboardV3';
+export { DashboardLayoutV3 } from './DashboardLayoutV3';
+export { ApplyAllActionsV3 } from './ApplyAllActionsV3';
+export { ChannelHealthV3 } from './ChannelHealthV3';

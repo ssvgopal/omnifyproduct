@@ -38,13 +38,46 @@ export default function OnboardingPage() {
     );
   }
 
-  const handleNext = (stepData?: any) => {
+  const handleNext = async (stepData?: any) => {
     if (stepData) {
       setOnboardingData({ ...onboardingData, ...stepData });
     }
 
     const steps: OnboardingStep[] = ['company', 'platforms', 'sync', 'complete'];
     const currentIndex = steps.indexOf(currentStep);
+
+    // Special handling for transitions that require backend calls
+    if (currentStep === 'company') {
+      // Persist company info
+      try {
+        await fetch('/api/onboarding/company', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: stepData?.companyName || onboardingData.companyName,
+            industry: stepData?.industry || onboardingData.industry,
+            annualSpend: stepData?.revenueRange || onboardingData.revenueRange,
+          }),
+        });
+      } catch (err) {
+        console.error('[ONBOARDING] Failed to save company info', err);
+      }
+    }
+
+    if (currentStep === 'sync') {
+      // Trigger initial brain cycle
+      try {
+        await fetch('/api/onboarding/brain-init', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+      } catch (err) {
+        console.error('[ONBOARDING] Failed to initialize brain', err);
+      }
+    }
+
     if (currentIndex < steps.length - 1) {
       setCurrentStep(steps[currentIndex + 1]);
     }
@@ -59,7 +92,7 @@ export default function OnboardingPage() {
   };
 
   const handleComplete = () => {
-    router.push('/dashboard');
+    router.push('/dashboard-v3');
   };
 
   return (
