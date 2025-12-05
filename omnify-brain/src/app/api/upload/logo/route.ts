@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
+import { supabaseAdmin } from '@/lib/db/supabase';
 import { uploadFile, getLogoPath, validateFile, getSignedUrl, STORAGE_BUCKETS } from '@/lib/storage';
 
 /**
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Only admins can upload logos
-    if (user.role !== 'admin' && user.role !== 'vendor') {
+    if (user.role !== 'admin') {
       return NextResponse.json(
         { error: 'Only admins can upload organization logos' },
         { status: 403 }

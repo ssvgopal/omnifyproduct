@@ -9,7 +9,7 @@ import { supabaseAdmin } from '@/lib/db/supabase';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { platform: string } }
+  { params }: { params: Promise<{ platform: string }> }
 ) {
   try {
     const user = await getCurrentUser(request);
@@ -21,7 +21,7 @@ export async function POST(
       );
     }
 
-    const platform = params.platform;
+    const { platform } = await params;
     const platformMap: Record<string, string> = {
       meta: 'Meta',
       google: 'Google',

@@ -21,3 +21,5 @@ export { LeaderboardV3 } from './LeaderboardV3';
 export { DashboardLayoutV3 } from './DashboardLayoutV3';
 export { ApplyAllActionsV3 } from './ApplyAllActionsV3';
 export { ChannelHealthV3 } from './ChannelHealthV3';
+export { Sparkline, SparklineWithLabel } from './Sparkline';
+export { ActionConfirmModal } from './ActionConfirmModal';

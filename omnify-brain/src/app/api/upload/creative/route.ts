@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
+import { supabaseAdmin } from '@/lib/db/supabase';
 import { uploadFile, getCreativePath, validateFile, getSignedUrl, STORAGE_BUCKETS } from '@/lib/storage';
 
 /**

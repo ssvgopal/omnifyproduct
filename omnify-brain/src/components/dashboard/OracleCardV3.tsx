@@ -13,6 +13,7 @@ import { OracleOutputV3, PersonaType } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { usePersona } from '@/lib/persona-context';
+import { Sparkline } from './Sparkline';
 import { 
   Zap, 
   AlertTriangle, 
@@ -192,6 +193,7 @@ interface RiskItem {
   message: string;
   probability?: number;
   details?: Record<string, string>;
+  sparklineData?: number[];
 }
 
 function RiskSection({ 
@@ -232,7 +234,18 @@ function RiskSection({
             className={`p-3 rounded-lg ${colors.bg} ${colors.border} border`}
           >
             <div className="flex justify-between items-start mb-1">
-              <span className="font-medium text-sm">{item.name}</span>
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-sm">{item.name}</span>
+                {/* Sparkline for trend visualization */}
+                {item.sparklineData && item.sparklineData.length > 0 && (
+                  <Sparkline 
+                    data={item.sparklineData} 
+                    width={60} 
+                    height={20} 
+                    color={item.severity === 'high' ? '#ef4444' : item.severity === 'medium' ? '#f97316' : '#eab308'}
+                  />
+                )}
+              </div>
               <div className="flex items-center gap-2">
                 {config.showProbabilities && item.probability !== undefined && (
                   <span className="text-xs text-muted-foreground">

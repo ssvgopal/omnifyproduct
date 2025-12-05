@@ -52,13 +52,6 @@ export function TopBarV3({ state }: TopBarV3Props) {
 
         {/* Metrics - scrollable on mobile */}
         <div className="flex items-center gap-4 lg:gap-6 overflow-x-auto pb-2 lg:pb-0 -mx-4 px-4 lg:mx-0 lg:px-0">
-          {/* MER */}
-          <MetricDisplay
-            label="MER"
-            value={`${memory.totals.mer.toFixed(2)}x`}
-            tooltip="Marketing Efficiency Ratio"
-          />
-
           {/* Blended ROAS */}
           <MetricDisplay
             label="Blended ROAS"
@@ -72,6 +65,20 @@ export function TopBarV3({ state }: TopBarV3Props) {
             value={`${memory.totals.ltvRoas.toFixed(2)}x`}
             highlight
             tooltip={`LTV Factor: ${memory.ltvFactor.toFixed(2)}`}
+          />
+
+          {/* CAC - Customer Acquisition Cost */}
+          <MetricDisplay
+            label="CAC"
+            value={formatCurrency(calculateCAC(memory))}
+            tooltip="Customer Acquisition Cost"
+          />
+
+          {/* 90d CLV - Customer Lifetime Value */}
+          <MetricDisplay
+            label="90d CLV"
+            value={formatCurrency(calculateCLV90d(memory))}
+            tooltip="90-day Customer Lifetime Value"
           />
 
           {/* Global Risk Level */}
@@ -280,4 +287,44 @@ function getTrend(channels: any[]): 'up' | 'down' | 'stable' {
   if (upCount > downCount) return 'up';
   if (downCount > upCount) return 'down';
   return 'stable';
+}
+
+/**
+ * Calculate CAC (Customer Acquisition Cost)
+ * CAC = Total Spend / Total Conversions
+ */
+function calculateCAC(memory: any): number {
+  const totalSpend = memory.totals.totalSpend || 0;
+  // Estimate conversions from revenue and average order value
+  // Assuming AOV of ~$75 for beauty/skincare (per research brief)
+  const estimatedAOV = 75;
+  const estimatedConversions = memory.totals.totalRevenue / estimatedAOV;
+  
+  if (estimatedConversions <= 0) return 0;
+  return totalSpend / estimatedConversions;
+}
+
+/**
+ * Calculate 90-day CLV (Customer Lifetime Value)
+ * Uses LTV factor from cohort data
+ */
+function calculateCLV90d(memory: any): number {
+  // Base CLV from average order value * repeat purchase rate
+  // Per research brief: $50M-$350M beauty brands with subscriptions
+  const baseAOV = 75;
+  const repeatPurchaseMultiplier = memory.ltvFactor || 1.0;
+  
+  // 90-day CLV = AOV * LTV factor * estimated purchases in 90 days
+  // Assuming 1.5 purchases in 90 days for subscription brands
+  return baseAOV * repeatPurchaseMultiplier * 1.5;
+}
+
+/**
+ * Format currency for display
+ */
+function formatCurrency(amount: number): string {
+  if (amount >= 1000) {
+    return `$${(amount / 1000).toFixed(1)}K`;
+  }
+  return `$${amount.toFixed(0)}`;
 }

@@ -44,7 +44,7 @@ export class GoogleAdsClient {
                 grant_type: 'refresh_token'
             });
 
-            this.accessToken = response.data.access_token;
+            this.accessToken = response.data.access_token as string;
             return this.accessToken;
         } catch (error: any) {
             console.error('[GOOGLE_ADS] Error getting access token:', error.response?.data || error.message);

@@ -1,6 +1,6 @@
 import { BrainState } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { PersonaToggle } from '@/components/PersonaToggle';
+import { PersonaToggle } from '@/components/shared/PersonaToggle';
 
 interface TopBarProps {
     state: BrainState;
