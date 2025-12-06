@@ -164,6 +164,12 @@ export default function Dashboard() {
             <p className="text-slate-600 text-sm">
               Welcome back, <span className="font-medium text-slate-900">{session.user?.email}</span>
             </p>
+            {error && (
+              <div className="mt-2 text-sm text-red-600 flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                {error}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <div className="px-3 py-1.5 bg-slate-100 rounded-md">
