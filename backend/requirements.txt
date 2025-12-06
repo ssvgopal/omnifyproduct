@@ -115,3 +115,6 @@ qrcode[pil]==7.4.2
 # Development tools
 pre-commit==3.6.0
 bandit==1.7.5
+cryptography
+supabase
+httpx
