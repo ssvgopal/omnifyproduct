@@ -408,6 +408,7 @@ export default function Dashboard() {
             <button 
               onClick={() => handleQuickAction('settings')}
               className="group relative bg-white border-2 border-slate-200 rounded-lg p-5 text-left hover:border-slate-400 hover:shadow-md transition-all duration-200"
+              data-testid="settings-card"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-slate-100 transition-colors">
