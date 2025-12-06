@@ -385,6 +385,8 @@ async def aggregate_platform_responses(aggregate: AggregateResponses):
 # Include the routers in the main app
 app.include_router(api_router)
 app.include_router(api_key_router)
+app.include_router(platforms_router)
+app.include_router(ai_router)
 
 # CORS middleware
 app.add_middleware(
