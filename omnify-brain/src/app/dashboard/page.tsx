@@ -17,8 +17,12 @@ import {
   Users,
   Target,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
+import { platformAPI, type UnifiedMetrics } from '@/lib/api/platform-api';
+import { aiAPI, type Recommendation } from '@/lib/api/ai-api';
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
