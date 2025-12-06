@@ -28,6 +28,16 @@ export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  
+  // Data state
+  const [metrics, setMetrics] = useState<UnifiedMetrics | null>(null);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Mock organization ID - replace with actual from session
+  const organizationId = 'default-org-id';
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -35,7 +45,58 @@ export default function Dashboard() {
       router.push('/login');
       return;
     }
+    
+    // Load dashboard data
+    loadDashboardData();
   }, [session, status, router]);
+  
+  const loadDashboardData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Fetch unified metrics
+      const metricsData = await platformAPI.getUnifiedMetrics(organizationId);
+      setMetrics(metricsData);
+      
+      // Generate AI recommendations if we have data
+      if (metricsData.blended_metrics) {
+        try {
+          const recsResult = await aiAPI.generateRecommendations(
+            organizationId,
+            metricsData.blended_metrics,
+            'openai'
+          );
+          
+          if (recsResult.success && recsResult.recommendations) {
+            setRecommendations(recsResult.recommendations.slice(0, 3));
+          }
+        } catch (aiError) {
+          console.error('Failed to generate recommendations:', aiError);
+          // Don't fail the whole page if AI fails
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to load dashboard data:', err);
+      setError(err.message || 'Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      await platformAPI.syncAllPlatforms(organizationId, 7);
+      // Reload data after sync
+      await loadDashboardData();
+    } catch (err: any) {
+      console.error('Sync failed:', err);
+      setError(err.message || 'Sync failed');
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   if (status === 'loading') {
     return (
