@@ -14,6 +14,8 @@ from core.rate_limiter import rate_limiter
 
 # Import API routes
 from api.api_key_routes import router as api_key_router
+from api.platforms_routes import router as platforms_router
+from api.ai_routes import router as ai_router
 
 # Import platform adapters (MVP only)
 # Phase 1 deprecated adapters (archived)
