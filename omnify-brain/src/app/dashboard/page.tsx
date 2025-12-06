@@ -325,7 +325,7 @@ export default function Dashboard() {
             <div className="space-y-4">
               <div>
                 <p className="text-xs font-medium text-slate-500 mb-1">Recommendations</p>
-                <p className="text-2xl font-semibold text-slate-900">3</p>
+                <p className="text-2xl font-semibold text-slate-900">{recommendations.length}</p>
                 <p className="text-xs text-slate-500 mt-1">action items ready</p>
               </div>
               <div className="pt-4 border-t border-slate-100">
