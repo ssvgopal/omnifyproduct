@@ -172,6 +172,14 @@ export default function Dashboard() {
             )}
           </div>
           <div className="flex items-center gap-4">
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+              <span className="text-xs font-medium">{syncing ? 'Syncing...' : 'Sync Data'}</span>
+            </button>
             <div className="px-3 py-1.5 bg-slate-100 rounded-md">
               <span className="text-xs font-medium text-slate-700 uppercase tracking-wide">
                 {(session.user as any)?.role || 'user'}
