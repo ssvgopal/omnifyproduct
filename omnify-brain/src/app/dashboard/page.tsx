@@ -244,19 +244,29 @@ export default function Dashboard() {
             <div className="space-y-4">
               <div>
                 <p className="text-xs font-medium text-slate-500 mb-1">Total Spend (30d)</p>
-                <p className="text-2xl font-semibold text-slate-900">$12,450</p>
-                <p className="text-xs text-slate-500 mt-1">vs $11,200 last period</p>
+                <p className="text-2xl font-semibold text-slate-900">
+                  ${blendedMetrics.spend.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+                <p className="text-xs text-slate-500 mt-1">{blendedMetrics.impressions.toLocaleString()} impressions</p>
               </div>
               <div className="pt-4 border-t border-slate-100">
                 <p className="text-xs font-medium text-slate-500 mb-1">Total Revenue</p>
-                <p className="text-2xl font-semibold text-emerald-600">$49,800</p>
+                <p className="text-2xl font-semibold text-emerald-600">
+                  ${blendedMetrics.revenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
               </div>
               <div className="pt-4 border-t border-slate-100">
                 <p className="text-xs font-medium text-slate-500 mb-1">Blended ROAS</p>
                 <div className="flex items-baseline gap-2">
-                  <p className="text-2xl font-semibold text-blue-600">4.0x</p>
-                  <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
-                    +12%
+                  <p className="text-2xl font-semibold text-blue-600">
+                    {blendedMetrics.roas.toFixed(2)}x
+                  </p>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded ${
+                    blendedMetrics.roas >= 3 ? 'text-emerald-600 bg-emerald-50' : 
+                    blendedMetrics.roas >= 2 ? 'text-amber-600 bg-amber-50' : 
+                    'text-red-600 bg-red-50'
+                  }`}>
+                    {blendedMetrics.conversions} conversions
                   </span>
                 </div>
               </div>
