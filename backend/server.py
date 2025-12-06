@@ -380,8 +380,9 @@ async def aggregate_platform_responses(aggregate: AggregateResponses):
     result = await gateway.aggregate_response(aggregate.responses)
     return result
 
-# Include the router in the main app
+# Include the routers in the main app
 app.include_router(api_router)
+app.include_router(api_key_router)
 
 # CORS middleware
 app.add_middleware(
