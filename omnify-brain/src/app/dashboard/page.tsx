@@ -288,17 +288,25 @@ export default function Dashboard() {
               <div>
                 <p className="text-xs font-medium text-slate-500 mb-1">Risk Score</p>
                 <div className="flex items-baseline gap-2 mb-2">
-                  <p className="text-2xl font-semibold text-amber-600">35%</p>
-                  <span className="text-xs font-medium text-slate-500">Moderate</span>
+                  <p className={`text-2xl font-semibold text-${riskColor}-600`}>{riskScore}%</p>
+                  <span className="text-xs font-medium text-slate-500">{riskLevel}</span>
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-2">
-                  <div className="bg-amber-500 rounded-full h-2" style={{ width: '35%' }}></div>
+                  <div className={`bg-${riskColor}-500 rounded-full h-2`} style={{ width: `${riskScore}%` }}></div>
                 </div>
               </div>
               <div className="pt-4 border-t border-slate-100">
-                <p className="text-xs font-medium text-slate-500 mb-1">Risk Factors</p>
-                <p className="text-2xl font-semibold text-slate-900">2</p>
-                <p className="text-xs text-slate-500 mt-1">issues detected</p>
+                <p className="text-xs font-medium text-slate-500 mb-1">Performance Metrics</p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-slate-500">CTR:</span>
+                    <span className="font-semibold text-slate-900 ml-1">{blendedMetrics.ctr.toFixed(2)}%</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">CPC:</span>
+                    <span className="font-semibold text-slate-900 ml-1">${blendedMetrics.cpc.toFixed(2)}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
