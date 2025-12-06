@@ -378,6 +378,7 @@ export default function Dashboard() {
             <button 
               onClick={() => handleQuickAction('analytics')}
               className="group relative bg-white border-2 border-slate-200 rounded-lg p-5 text-left hover:border-blue-500 hover:shadow-md transition-all duration-200"
+              data-testid="analytics-card"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="p-2 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
