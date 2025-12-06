@@ -329,13 +329,39 @@ export default function Dashboard() {
                 <p className="text-xs text-slate-500 mt-1">action items ready</p>
               </div>
               <div className="pt-4 border-t border-slate-100">
-                <div className="bg-slate-50 rounded-md p-3 border border-slate-200">
-                  <p className="text-xs font-semibold text-slate-700 mb-1">Top Action</p>
-                  <p className="text-sm font-medium text-slate-900 mb-2">Scale Meta Ads by 20%</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">High Impact</span>
-                    <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded">Quick Win</span>
-                  </div>
+                <div className="space-y-3">
+                  {recommendations.length > 0 ? (
+                    recommendations.map((rec, index) => {
+                      const impactColor = rec.impact === 'high' ? 'emerald' : rec.impact === 'medium' ? 'blue' : 'slate';
+                      const Icon = rec.impact === 'high' ? TrendingUp : rec.impact === 'medium' ? CheckCircle2 : Lightbulb;
+                      
+                      return (
+                        <div key={index} className={`p-3 bg-${impactColor}-50 border border-${impactColor}-100 rounded-lg`}>
+                          <div className="flex items-start gap-2 mb-1">
+                            <Icon className={`h-4 w-4 text-${impactColor}-600 mt-0.5 flex-shrink-0`} />
+                            <p className="text-xs font-medium text-slate-900">{rec.title}</p>
+                          </div>
+                          <p className="text-xs text-slate-600 pl-6">
+                            {rec.description}
+                          </p>
+                          <div className="flex items-center gap-2 mt-2 pl-6">
+                            <span className={`text-xs px-2 py-0.5 rounded bg-${impactColor}-100 text-${impactColor}-700`}>
+                              {rec.impact} impact
+                            </span>
+                            <span className="text-xs text-slate-500">
+                              {rec.effort} effort
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="p-3 bg-slate-50 border border-slate-100 rounded-lg">
+                      <p className="text-xs text-slate-600 text-center">
+                        {loading ? 'Generating AI recommendations...' : 'Configure AI API keys to get recommendations'}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
