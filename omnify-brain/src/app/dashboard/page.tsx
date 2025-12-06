@@ -98,11 +98,11 @@ export default function Dashboard() {
     }
   };
 
-  if (status === 'loading') {
+  if (status === 'loading' || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-solid border-slate-600 border-r-transparent mb-4"></div>
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
           <p className="text-sm text-slate-600 font-medium">Loading dashboard...</p>
         </div>
       </div>
@@ -118,6 +118,23 @@ export default function Dashboard() {
       </div>
     );
   }
+  
+  // Calculate metrics from data
+  const blendedMetrics = metrics?.blended_metrics || {
+    spend: 0,
+    revenue: 0,
+    roas: 0,
+    impressions: 0,
+    clicks: 0,
+    conversions: 0,
+    ctr: 0,
+    cpc: 0
+  };
+  
+  // Calculate risk score based on ROAS and trends
+  const riskScore = blendedMetrics.roas < 2 ? 65 : blendedMetrics.roas < 3 ? 35 : 15;
+  const riskLevel = riskScore > 50 ? 'High' : riskScore > 30 ? 'Moderate' : 'Low';
+  const riskColor = riskScore > 50 ? 'red' : riskScore > 30 ? 'amber' : 'emerald';
 
   const handleQuickAction = (action: string) => {
     switch(action) {
