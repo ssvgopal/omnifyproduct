@@ -145,7 +145,7 @@ export default function Dashboard() {
         router.push('/campaigns');
         break;
       case 'settings':
-        router.push('/settings/integrations');
+        router.push('/settings/api-keys');
         break;
       default:
         break;
